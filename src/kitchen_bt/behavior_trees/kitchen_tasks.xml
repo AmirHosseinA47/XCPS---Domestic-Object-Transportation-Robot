@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Kitchen transport scenario in Gazebo: set the table (counter -> island) and clean it
+  (island -> counter). Same structure as the lab's plan (sunava/pycram transport_demo.py):
+  prepare the robot, then for each object: go to it, find it, pick it, carry it, place it.
+
+  Positions (map frame, metres) match src/kitchen_gazebo/config/scene.yaml. Where they differ
+  from the lab, that file says why (lab poses over the sink basin / on the island's edge).
+  Every action calls one robot skill (kitchen_skills.py) and logs what happened and why.
+-->
+<root BTCPP_format="4" main_tree_to_execute="SetTable">
+
+  <BehaviorTree ID="SetTable">
+    <Sequence name="set_the_table">
+      <SubTree ID="PrepareRobot" name="prepare_robot"/>
+      <SubTree ID="TransportObject" name="transport_milk" object="milk"
+               source="counter" look_target="1.40;0.55;0.95" target="island" goal="-0.85;1.20"/>
+      <SubTree ID="TransportObject" name="transport_cereal" object="breakfast_cereal"
+               source="counter" look_target="1.40;0.80;0.96" target="island" goal="-0.85;0.75"/>
+      <SubTree ID="TransportObject" name="transport_bowl" object="bowl"
+               source="counter" look_target="1.40;0.35;0.89" target="island" goal="-0.85;1.00"/>
+      <ParkArms name="park_arms_at_end"/>
+    </Sequence>
+  </BehaviorTree>
+
+  <!-- The reverse, in reverse order: the bowl in front is taken away first. -->
+  <BehaviorTree ID="CleanTable">
+    <Sequence name="clean_the_table">
+      <SubTree ID="PrepareRobot" name="prepare_robot"/>
+      <SubTree ID="TransportObject" name="transport_bowl" object="bowl"
+               source="island" look_target="-0.85;1.00;0.89" target="counter" goal="1.40;0.35"/>
+      <SubTree ID="TransportObject" name="transport_cereal" object="breakfast_cereal"
+               source="island" look_target="-0.85;0.75;0.96" target="counter" goal="1.40;0.80"/>
+      <SubTree ID="TransportObject" name="transport_milk" object="milk"
+               source="island" look_target="-0.85;1.20;0.95" target="counter" goal="1.40;0.55"/>
+      <ParkArms name="park_arms_at_end"/>
+    </Sequence>
+  </BehaviorTree>
+
+  <!-- Same start as the lab: park both arms, raise the torso to "high". -->
+  <BehaviorTree ID="PrepareRobot">
+    <Sequence name="prepare">
+      <ParkArms name="park_arms"/>
+      <MoveTorso name="raise_torso" height="0.30"/>
+    </Sequence>
+  </BehaviorTree>
+
+  <!--
+    Moves one object from the `source` surface to `goal` on the `target` surface.
+    The lab's plan stops at the first failed detection; here a fallback re-reads the robot's
+    pose, looks again and retries (requirement FR-3).
+  -->
+  <BehaviorTree ID="TransportObject">
+    <Sequence name="transport">
+      <NavigateTo name="go_to_object" place="{source}"/>
+      <Fallback name="find_object">
+        <Sequence name="look_and_detect">
+          <LookAt name="look_at_object_area" target="{look_target}"/>
+          <DetectObject name="detect_object" object="{object}" position="{object_position}"/>
+        </Sequence>
+        <RetryUntilSuccessful name="recover_detection" num_attempts="2">
+          <Sequence name="relocalize_and_look_again">
+            <RefreshRobotPose name="relocalize"/>
+            <LookAt name="look_again" target="{look_target}"/>
+            <DetectObject name="detect_again" object="{object}" position="{object_position}"/>
+          </Sequence>
+        </RetryUntilSuccessful>
+      </Fallback>
+      <PickObject name="pick_object" object="{object}" arm="{arm}"/>
+      <NavigateTo name="carry_to_target" place="{target}"/>
+      <PlaceObject name="place_object" object="{object}" goal="{goal}" surface="{target}"/>
+      <CheckObjectAt name="check_object_at_goal" object="{object}" goal="{goal}" tolerance="0.05"/>
+    </Sequence>
+  </BehaviorTree>
+
+</root>

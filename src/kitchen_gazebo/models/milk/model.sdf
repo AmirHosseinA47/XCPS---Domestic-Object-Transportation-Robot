@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<!-- milk from the lab (pycram resources/objects/milk.stl, same mesh as in the CRAM repo).
+     Visual: the lab mesh. Collision: a box the size of the mesh's bounding box. -->
+<sdf version="1.9">
+  <model name="milk">
+    <link name="link">
+      <inertial>
+        <pose>0.0 0.0 0.009 0 0 0</pose>
+        <mass>0.25</mass>
+        <inertia><ixx>0.000872</ixx><iyy>0.000869</iyy><izz>0.000173</izz><ixy>0</ixy><ixz>0</ixz><iyz>0</iyz></inertia>
+      </inertial>
+      <collision name="collision">
+        <pose>0.0 0.0 0.009 0 0 0</pose>
+        <geometry><box><size>0.064 0.065 0.194</size></box></geometry>
+        <surface><friction><ode><mu>1.0</mu><mu2>1.0</mu2></ode></friction></surface>
+      </collision>
+      <visual name="visual">
+        <geometry><mesh><uri>model://milk/meshes/milk.stl</uri></mesh></geometry>
+        <material><ambient>0.95 0.95 0.95 1</ambient><diffuse>0.95 0.95 0.95 1</diffuse></material>
+      </visual>
+    </link>
+    <!-- Ground-truth pose for checking results (perception itself goes through the head camera). -->
+    <plugin filename="gz-sim-pose-publisher-system" name="gz::sim::systems::PosePublisher">
+      <publish_link_pose>false</publish_link_pose>
+      <publish_model_pose>true</publish_model_pose>
+      <use_pose_vector_msg>true</use_pose_vector_msg>
+      <update_frequency>20</update_frequency>
+    </plugin>
+  </model>
+</sdf>

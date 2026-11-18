@@ -1,0 +1,977 @@
+[
+ {
+  "link": "sink_area",
+  "min": [
+   1.243,
+   -0.742,
+   -0.002
+  ],
+  "max": [
+   1.827,
+   1.322,
+   0.852
+  ]
+ },
+ {
+  "link": "sink_area_sink",
+  "min": [
+   1.278,
+   -0.613,
+   0.666
+  ],
+  "max": [
+   1.783,
+   0.253,
+   0.858
+  ]
+ },
+ {
+  "link": "sink_area_right_panel",
+  "min": [
+   1.243,
+   -0.71,
+   0.696
+  ],
+  "max": [
+   1.267,
+   -0.11,
+   0.834
+  ]
+ },
+ {
+  "link": "sink_area_trash_drawer_main",
+  "min": [
+   1.243,
+   -0.71,
+   0.106
+  ],
+  "max": [
+   1.807,
+   -0.11,
+   0.684
+  ]
+ },
+ {
+  "link": "sink_area_trash_drawer_handle",
+  "min": [
+   1.183,
+   -0.664,
+   0.623
+  ],
+  "max": [
+   1.248,
+   -0.156,
+   0.642
+  ]
+ },
+ {
+  "link": "sink_area_left_upper_drawer_main",
+  "min": [
+   1.243,
+   0.49,
+   0.686
+  ],
+  "max": [
+   1.807,
+   1.29,
+   0.824
+  ]
+ },
+ {
+  "link": "sink_area_left_upper_drawer_handle",
+  "min": [
+   1.183,
+   0.536,
+   0.763
+  ],
+  "max": [
+   1.248,
+   1.244,
+   0.782
+  ]
+ },
+ {
+  "link": "sink_area_left_middle_drawer_main",
+  "min": [
+   1.243,
+   0.49,
+   0.386
+  ],
+  "max": [
+   1.807,
+   1.29,
+   0.674
+  ]
+ },
+ {
+  "link": "sink_area_left_middle_drawer_handle",
+  "min": [
+   1.183,
+   0.536,
+   0.631
+  ],
+  "max": [
+   1.248,
+   1.244,
+   0.649
+  ]
+ },
+ {
+  "link": "sink_area_left_bottom_drawer_main",
+  "min": [
+   1.243,
+   0.49,
+   0.086
+  ],
+  "max": [
+   1.807,
+   1.29,
+   0.374
+  ]
+ },
+ {
+  "link": "sink_area_left_bottom_drawer_handle",
+  "min": [
+   1.183,
+   0.536,
+   0.331
+  ],
+  "max": [
+   1.248,
+   1.244,
+   0.349
+  ]
+ },
+ {
+  "link": "sink_area_dish_washer_main",
+  "min": [
+   1.253,
+   -0.062,
+   0.117
+  ],
+  "max": [
+   1.807,
+   0.442,
+   0.791
+  ]
+ },
+ {
+  "link": "sink_area_dish_washer_door",
+  "min": [
+   1.242,
+   -0.111,
+   0.094
+  ],
+  "max": [
+   1.268,
+   0.491,
+   0.815
+  ]
+ },
+ {
+  "link": "sink_area_dish_washer_door_handle",
+  "min": [
+   1.183,
+   -0.064,
+   0.752
+  ],
+  "max": [
+   1.248,
+   0.444,
+   0.771
+  ]
+ },
+ {
+  "link": "oven_area_area",
+  "min": [
+   1.223,
+   1.318,
+   -0.002
+  ],
+  "max": [
+   1.807,
+   2.522,
+   1.512
+  ]
+ },
+ {
+  "link": "oven_area_oven_main",
+  "min": [
+   1.243,
+   1.667,
+   0.87
+  ],
+  "max": [
+   1.797,
+   2.173,
+   1.473
+  ]
+ },
+ {
+  "link": "oven_area_oven_door",
+  "min": [
+   1.232,
+   1.619,
+   0.865
+  ],
+  "max": [
+   1.258,
+   2.221,
+   1.36
+  ]
+ },
+ {
+  "link": "oven_area_oven_door_handle",
+  "min": [
+   1.173,
+   1.666,
+   1.297
+  ],
+  "max": [
+   1.238,
+   2.174,
+   1.316
+  ]
+ },
+ {
+  "link": "oven_area_oven_panel",
+  "min": [
+   1.233,
+   1.621,
+   1.361
+  ],
+  "max": [
+   1.257,
+   2.22,
+   1.479
+  ]
+ },
+ {
+  "link": "oven_area_oven_knob_stove_1",
+  "min": [
+   1.219,
+   2.108,
+   1.393
+  ],
+  "max": [
+   1.248,
+   2.152,
+   1.437
+  ]
+ },
+ {
+  "link": "oven_area_oven_knob_stove_2",
+  "min": [
+   1.219,
+   2.038,
+   1.393
+  ],
+  "max": [
+   1.248,
+   2.082,
+   1.437
+  ]
+ },
+ {
+  "link": "oven_area_oven_knob_stove_3",
+  "min": [
+   1.219,
+   1.968,
+   1.393
+  ],
+  "max": [
+   1.248,
+   2.012,
+   1.437
+  ]
+ },
+ {
+  "link": "oven_area_oven_knob_stove_4",
+  "min": [
+   1.219,
+   1.898,
+   1.393
+  ],
+  "max": [
+   1.248,
+   1.942,
+   1.437
+  ]
+ },
+ {
+  "link": "oven_area_oven_knob_oven",
+  "min": [
+   1.219,
+   1.738,
+   1.393
+  ],
+  "max": [
+   1.248,
+   1.782,
+   1.437
+  ]
+ },
+ {
+  "link": "oven_area_area_middle_upper_drawer_main",
+  "min": [
+   1.233,
+   1.62,
+   0.731
+  ],
+  "max": [
+   1.797,
+   2.22,
+   0.869
+  ]
+ },
+ {
+  "link": "oven_area_area_middle_upper_drawer_handle",
+  "min": [
+   1.173,
+   1.666,
+   0.808
+  ],
+  "max": [
+   1.238,
+   2.174,
+   0.827
+  ]
+ },
+ {
+  "link": "oven_area_area_middle_lower_drawer_main",
+  "min": [
+   1.233,
+   1.62,
+   0.151
+  ],
+  "max": [
+   1.797,
+   2.22,
+   0.729
+  ]
+ },
+ {
+  "link": "oven_area_area_middle_lower_drawer_handle",
+  "min": [
+   1.173,
+   1.666,
+   0.668
+  ],
+  "max": [
+   1.238,
+   2.174,
+   0.687
+  ]
+ },
+ {
+  "link": "oven_area_area_left_drawer_main",
+  "min": [
+   1.226,
+   2.221,
+   0.15
+  ],
+  "max": [
+   1.804,
+   2.519,
+   1.48
+  ]
+ },
+ {
+  "link": "oven_area_area_left_drawer_handle",
+  "min": [
+   1.153,
+   2.36,
+   0.195
+  ],
+  "max": [
+   1.218,
+   2.38,
+   1.435
+  ]
+ },
+ {
+  "link": "drawer_oven_right_front_link",
+  "min": [
+   1.233,
+   1.33,
+   0.14
+  ],
+  "max": [
+   1.258,
+   1.63,
+   1.47
+  ]
+ },
+ {
+  "link": "oven_area_area_right_drawer_handle",
+  "min": [
+   1.188,
+   1.472,
+   0.185
+  ],
+  "max": [
+   1.203,
+   1.487,
+   1.425
+  ]
+ },
+ {
+  "link": "drawer_oven_right_board0_link",
+  "min": [
+   1.25,
+   1.345,
+   0.138
+  ],
+  "max": [
+   1.74,
+   1.615,
+   0.163
+  ]
+ },
+ {
+  "link": "drawer_oven_right_board0_barrier_right_link",
+  "min": [
+   1.25,
+   1.605,
+   0.16
+  ],
+  "max": [
+   1.74,
+   1.625,
+   0.21
+  ]
+ },
+ {
+  "link": "drawer_oven_right_board0_barrier_left_link",
+  "min": [
+   1.25,
+   1.335,
+   0.16
+  ],
+  "max": [
+   1.74,
+   1.355,
+   0.21
+  ]
+ },
+ {
+  "link": "drawer_oven_right_board1_link",
+  "min": [
+   1.25,
+   1.345,
+   0.463
+  ],
+  "max": [
+   1.74,
+   1.615,
+   0.488
+  ]
+ },
+ {
+  "link": "drawer_oven_right_board1_barrier_right_link",
+  "min": [
+   1.25,
+   1.605,
+   0.485
+  ],
+  "max": [
+   1.74,
+   1.625,
+   0.535
+  ]
+ },
+ {
+  "link": "drawer_oven_right_board1_barrier_left_link",
+  "min": [
+   1.25,
+   1.335,
+   0.485
+  ],
+  "max": [
+   1.74,
+   1.355,
+   0.535
+  ]
+ },
+ {
+  "link": "drawer_oven_right_board2_link",
+  "min": [
+   1.25,
+   1.345,
+   0.793
+  ],
+  "max": [
+   1.74,
+   1.615,
+   0.818
+  ]
+ },
+ {
+  "link": "drawer_oven_right_board2_barrier_right_link",
+  "min": [
+   1.25,
+   1.605,
+   0.815
+  ],
+  "max": [
+   1.74,
+   1.625,
+   0.865
+  ]
+ },
+ {
+  "link": "drawer_oven_right_board2_barrier_left_link",
+  "min": [
+   1.25,
+   1.335,
+   0.815
+  ],
+  "max": [
+   1.74,
+   1.355,
+   0.865
+  ]
+ },
+ {
+  "link": "drawer_oven_right_board3_link",
+  "min": [
+   1.25,
+   1.345,
+   1.123
+  ],
+  "max": [
+   1.74,
+   1.615,
+   1.147
+  ]
+ },
+ {
+  "link": "drawer_oven_right_board3_barrier_right_link",
+  "min": [
+   1.25,
+   1.605,
+   1.145
+  ],
+  "max": [
+   1.74,
+   1.625,
+   1.195
+  ]
+ },
+ {
+  "link": "drawer_oven_right_board3_barrier_left_link",
+  "min": [
+   1.25,
+   1.335,
+   1.145
+  ],
+  "max": [
+   1.74,
+   1.355,
+   1.195
+  ]
+ },
+ {
+  "link": "kitchen_island",
+  "min": [
+   -1.47,
+   0.488,
+   -0.002
+  ],
+  "max": [
+   -0.665,
+   2.942,
+   0.854
+  ]
+ },
+ {
+  "link": "kitchen_island_surface",
+  "min": [
+   -1.467,
+   0.494,
+   0.831
+  ],
+  "max": [
+   -0.667,
+   2.944,
+   0.851
+  ]
+ },
+ {
+  "link": "kitchen_island_stove",
+  "min": [
+   -1.319,
+   2.198,
+   0.848
+  ],
+  "max": [
+   -0.815,
+   2.772,
+   0.857
+  ]
+ },
+ {
+  "link": "kitchen_island_left_panel",
+  "min": [
+   -0.807,
+   0.62,
+   0.681
+  ],
+  "max": [
+   -0.783,
+   1.219,
+   0.819
+  ]
+ },
+ {
+  "link": "kitchen_island_left_upper_drawer_main",
+  "min": [
+   -1.347,
+   0.62,
+   0.391
+  ],
+  "max": [
+   -0.783,
+   1.219,
+   0.679
+  ]
+ },
+ {
+  "link": "kitchen_island_left_upper_drawer_handle",
+  "min": [
+   -0.788,
+   0.665,
+   0.636
+  ],
+  "max": [
+   -0.723,
+   1.174,
+   0.654
+  ]
+ },
+ {
+  "link": "kitchen_island_left_lower_drawer_main",
+  "min": [
+   -1.347,
+   0.62,
+   0.101
+  ],
+  "max": [
+   -0.783,
+   1.219,
+   0.389
+  ]
+ },
+ {
+  "link": "kitchen_island_left_lower_drawer_handle",
+  "min": [
+   -0.788,
+   0.665,
+   0.346
+  ],
+  "max": [
+   -0.723,
+   1.174,
+   0.364
+  ]
+ },
+ {
+  "link": "kitchen_island_middle_panel",
+  "min": [
+   -0.807,
+   1.22,
+   0.681
+  ],
+  "max": [
+   -0.783,
+   2.219,
+   0.819
+  ]
+ },
+ {
+  "link": "kitchen_island_middle_upper_drawer_main",
+  "min": [
+   -1.347,
+   1.22,
+   0.391
+  ],
+  "max": [
+   -0.783,
+   2.219,
+   0.679
+  ]
+ },
+ {
+  "link": "kitchen_island_middle_upper_drawer_handle",
+  "min": [
+   -0.788,
+   1.262,
+   0.636
+  ],
+  "max": [
+   -0.723,
+   2.176,
+   0.654
+  ]
+ },
+ {
+  "link": "kitchen_island_middle_lower_drawer_main",
+  "min": [
+   -1.347,
+   1.22,
+   0.101
+  ],
+  "max": [
+   -0.783,
+   2.219,
+   0.389
+  ]
+ },
+ {
+  "link": "kitchen_island_middle_lower_drawer_handle",
+  "min": [
+   -0.788,
+   1.262,
+   0.346
+  ],
+  "max": [
+   -0.723,
+   2.176,
+   0.364
+  ]
+ },
+ {
+  "link": "kitchen_island_right_panel",
+  "min": [
+   -0.807,
+   2.22,
+   0.681
+  ],
+  "max": [
+   -0.783,
+   2.819,
+   0.819
+  ]
+ },
+ {
+  "link": "kitchen_island_right_upper_drawer_main",
+  "min": [
+   -1.347,
+   2.22,
+   0.391
+  ],
+  "max": [
+   -0.783,
+   2.819,
+   0.679
+  ]
+ },
+ {
+  "link": "kitchen_island_right_upper_drawer_handle",
+  "min": [
+   -0.788,
+   2.265,
+   0.636
+  ],
+  "max": [
+   -0.723,
+   2.774,
+   0.654
+  ]
+ },
+ {
+  "link": "kitchen_island_right_lower_drawer_main",
+  "min": [
+   -1.347,
+   2.22,
+   0.101
+  ],
+  "max": [
+   -0.783,
+   2.819,
+   0.389
+  ]
+ },
+ {
+  "link": "kitchen_island_right_lower_drawer_handle",
+  "min": [
+   -0.788,
+   2.265,
+   0.346
+  ],
+  "max": [
+   -0.723,
+   2.774,
+   0.364
+  ]
+ },
+ {
+  "link": "fridge_area",
+  "min": [
+   1.242,
+   -1.343,
+   -0.008
+  ],
+  "max": [
+   1.828,
+   -0.737,
+   1.508
+  ]
+ },
+ {
+  "link": "fridge_area_lower_drawer_main",
+  "min": [
+   1.253,
+   -1.339,
+   0.178
+  ],
+  "max": [
+   1.817,
+   -0.741,
+   0.467
+  ]
+ },
+ {
+  "link": "fridge_area_lower_drawer_handle",
+  "min": [
+   1.193,
+   -1.294,
+   0.423
+  ],
+  "max": [
+   1.258,
+   -0.786,
+   0.442
+  ]
+ },
+ {
+  "link": "iai_fridge_main",
+  "min": [
+   1.288,
+   -1.341,
+   0.281
+  ],
+  "max": [
+   1.79,
+   -0.775,
+   1.235
+  ]
+ },
+ {
+  "link": "iai_fridge_door",
+  "min": [
+   1.244,
+   -1.342,
+   0.498
+  ],
+  "max": [
+   1.257,
+   -0.738,
+   1.472
+  ]
+ },
+ {
+  "link": "iai_fridge_door_handle",
+  "min": [
+   1.176,
+   -0.779,
+   0.545
+  ],
+  "max": [
+   1.24,
+   -0.76,
+   1.425
+  ]
+ },
+ {
+  "link": "table_area_main",
+  "min": [
+   -3.702,
+   -0.802,
+   -0.364
+  ],
+  "max": [
+   -2.898,
+   0.802,
+   0.36
+  ]
+ },
+ {
+  "link": "kitchen_wall_1",
+  "min": [
+   0.812,
+   -2.03,
+   -0.001
+  ],
+  "max": [
+   1.951,
+   -1.878,
+   2.501
+  ]
+ },
+ {
+  "link": "kitchen_wall_2",
+  "min": [
+   1.8,
+   -2.03,
+   -0.001
+  ],
+  "max": [
+   1.952,
+   3.154,
+   2.501
+  ]
+ },
+ {
+  "link": "kitchen_wall_3",
+  "min": [
+   -3.952,
+   3.002,
+   -0.001
+  ],
+  "max": [
+   1.952,
+   3.154,
+   2.501
+  ]
+ },
+ {
+  "link": "kitchen_wall_4",
+  "min": [
+   -3.951,
+   -1.098,
+   -0.001
+  ],
+  "max": [
+   -3.799,
+   3.154,
+   0.701
+  ]
+ },
+ {
+  "link": "kitchen_wall_5",
+  "min": [
+   -3.952,
+   -1.098,
+   -0.001
+  ],
+  "max": [
+   -0.676,
+   -0.945,
+   0.701
+  ]
+ },
+ {
+  "link": "kitchen_wall_6",
+  "min": [
+   -0.828,
+   -1.947,
+   -0.001
+  ],
+  "max": [
+   -0.676,
+   -0.945,
+   0.701
+  ]
+ }
+]

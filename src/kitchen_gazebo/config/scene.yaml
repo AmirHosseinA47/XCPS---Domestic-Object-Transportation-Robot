@@ -1,0 +1,30 @@
+# The kitchen scenario in one place (map frame; metres, radians). Read by kitchen_sim.launch.py
+# (where the objects start) and kitchen_skills.py (where the robot stands, where things go).
+#
+# Deviations from the lab (pycram transport_demo.py), all forced by physics:
+#  - Start poses: the lab puts the milk at (1.4, 0.2) and the bowl at (1.4, 0.0), above the sink
+#    basin (y -0.61..0.25); in Gazebo they would fall in. Here all three stand left of the sink.
+#  - Table poses: the lab's bowl target (-0.68, 0.6) is on the island's edge (x -0.667) and
+#    overlaps the milk target (-0.78, 0.6). Here: cereal left, bowl centre, milk right, at least
+#    25 cm from the island's end (y 0.494): at 6 cm a slightly tilted cereal box fell off (tested).
+
+objects:            # model origin when standing on the counter: x, y, z, yaw
+  milk:             [1.40, 0.55, 0.942, 0.0]
+  breakfast_cereal: [1.40, 0.80, 0.956, 0.0]
+  bowl:             [1.40, 0.35, 0.886, 0.0]
+
+table_poses:        # setting the table: where each object goes on the island (x, y)
+  milk:             [-0.85, 1.20]
+  breakfast_cereal: [-0.85, 0.75]
+  bowl:             [-0.85, 1.00]
+
+surfaces:           # top heights
+  counter: 0.852
+  island: 0.851
+
+standing_poses:     # where the PR2 stands to work at a surface (x, y, yaw)
+  counter: [0.70, 0.55, 0.0]
+  island:  [-0.22, 0.95, 3.14159]
+
+turn_point: [0.255, 0.5]   # aisle centre: the only place the PR2 with parked arms can turn
+torso_height: 0.30         # the lab's "high" torso position, kept while working

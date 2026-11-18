@@ -1,0 +1,9 @@
+# One robot skill, e.g. skill: "navigate", params_json: '{"to": "island"}'.
+string skill
+string params_json
+---
+bool success
+# What happened and why, in words. Goes into the behaviour tree's explanation log.
+string message
+# The skill's output as JSON, e.g. a detected object pose.
+string result_json

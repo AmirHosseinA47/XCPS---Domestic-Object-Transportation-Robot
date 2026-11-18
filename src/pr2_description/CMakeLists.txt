@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 3.16)
+project(pr2_description)
+find_package(ament_cmake REQUIRED)
+install(DIRECTORY urdf meshes materials DESTINATION share/${PROJECT_NAME})
+ament_package()
