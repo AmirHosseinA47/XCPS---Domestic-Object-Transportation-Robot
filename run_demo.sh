@@ -1,6 +1,6 @@
 #!/bin/bash
-# Build everything and run milestone 3 (objects, head camera, pick and place, behaviour tree).
-# Run inside WSL:  bash /mnt/e/Projects/XCPS_Kitchen_Gazebo/run_milestone3.sh [set|clean]
+# Build the workspace, start the simulation (Gazebo + Nav2 + robot skills) and run the behaviour tree.
+# Usage (from the repository folder):  bash run_demo.sh [set|clean]
 set -e
 SCENARIO=${1:-set}
 source /opt/ros/jazzy/setup.bash

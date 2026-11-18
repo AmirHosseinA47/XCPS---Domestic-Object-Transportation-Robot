@@ -1,179 +1,163 @@
-# XCPS Kitchen Gazebo
+# Explainable Kitchen Robot — Domestic Object Transportation
 
-Gazebo (Harmonic) version of the AICOR VRB *Domestic Object Transportation* lab
-(robot PR2, environment IAI kitchen, action core Transporting) for the XCPS project.
-ROS 2 Jazzy workspace; built and run inside WSL (Ubuntu 24.04).
+Course project for **Explainable Cyber-Physical Systems** (Carl von Ossietzky Universität Oldenburg,
+WS 2026/27).
 
-## Project decisions
+## What this project is about
 
-- **Robot (2026-11-18, agreed with the professor):** the Gazebo version does not have to use the exact
-  PR2. Any robot with the same functionality is fine: a mobile base, a camera it can aim (pan/tilt head),
-  and at least one arm with a gripper that reaches counter and island height (about 0.95 m), so it can
-  look at, detect, pick up, carry and place the objects. The current version still uses the lab's PR2.
-  A smaller mobile manipulator would avoid the PR2-specific problems listed below: its 1.44 m width with
-  parked arms (turning only at the aisle centre, too wide for the 1.43 m passage to the dining area),
-  the slow torso (about 20 s to working height) and the park/withdraw steps of the two-arm setup.
-  If the robot is changed, the kitchen, objects, behaviour tree and explanation layer stay; the robot
-  model, the arm motion code (IK) and the Nav2 footprint change.
+A mobile robot sets the table in a kitchen: it finds milk, cereal and a bowl on the counter, picks them
+up, carries them to the kitchen island and places them there — or clears the table again. Robots like
+this make many decisions on their own (where to stand, which arm to use, what to do after a failure),
+and people watching them often cannot tell what the robot is doing or why.
 
-## Packages
+The goal of the project is to make the robot **explainable**: to find out which explanations are needed,
+for whom and in which situations, and to let the robot give them — so that people understand it and
+trust it as much as it deserves. The work follows four steps:
 
-| Package | Contents |
-|---------|----------|
-| `pr2_description` | `urdf/pr2_lab.urdf`: the lab's PR2 model, unchanged (pycram `resources/robots/pr2.urdf`); meshes and textures from `PR2/pr2_common` (melodic-devel, BSD) |
-| `iai_kitchen` | `urdf/kitchen_lab.urdf`: the lab's kitchen model, unchanged (pycram `resources/kitchen.urdf`); meshes from `code-iai/iai_maps` (upstream declares no license) |
-| `kitchen_interfaces` | `srv/Skill.srv`: one robot skill call (skill name + JSON parameters -> success, reason, JSON result) |
-| `kitchen_bt` | behaviour tree for setting / clearing the table, runner with explanation log |
-| `kitchen_gazebo` | world, launch file, ROS 2 bridge config, RViz config, and `scripts/make_gazebo_urdfs.py`, which generates the Gazebo versions of both models into `urdf/` |
+1. **Exemplar and scenario** — the *Domestic Object Transportation* lab of the AICOR Virtual Research
+   Building (University of Bremen): a PR2 robot in the IAI kitchen, action core *Transporting*,
+   specialisations *setting the table* and *cleaning the table*.
+2. **Explainability requirements** — derived with a requirements-engineering process: stakeholders
+   (user, people sharing the kitchen, developer), guiding questions, requirements and design decisions.
+3. **Situations that need explanations** — classified with the taxonomy of explanation needs
+   (context-aware behaviour, failure, disobedience) and filtered by complexity, cost and occurrence.
+4. **Implementation and evaluation** — an explanation layer on top of the robot's task plan, evaluated
+   with a small user study.
 
-## What the Gazebo versions change (milestone 1)
+This repository contains the **simulation the explanations are built on**: a Gazebo / ROS 2 version
+of the exemplar. The original lab runs in remote Jupyter notebooks with a kinematic simulation, where
+the robot jumps between poses and can move through furniture. Here the same kitchen, objects and task
+run with real physics and real navigation, and every robot action reports what happened and why.
 
-- **PR2:** 20 joints (torso, head, laser tilt, 7 per arm, one finger per gripper) are held by
-  Gazebo position controllers and start in the lab's arm "park" pose. Casters, wheels and the
-  gripper's helper/mimic joints are fixed for now. Joint states and odometry are published.
-  Two physics adjustments (Gazebo version only):
-  - the shoulder-lift joints get a 150 Nm effort limit instead of 30 Nm, standing in for the
-    real PR2's arm counterbalance spring (without it the arms sag about 0.7 rad);
-  - the torso is driven by force (PID) instead of velocity commands, because the prismatic
-    torso does not move under velocity commands in Gazebo Harmonic. It rises at its URDF
-    limit of 0.013 m/s, as slowly as the real PR2's.
-- **Kitchen:** static; drawers and doors are fixed closed.
-- **Start pose:** (0.2, 0.6) instead of the lab's (1, 2). At (1, 2) the PR2's base overlaps
-  the oven front, which the lab's kinematic world ignores but Gazebo's physics does not
-  (the simulation slowed to 0.07% of real time). Spawning at the lab's counter pose (0.7, 0)
-  is also slow, because every joint starts at zero (arms straight ahead, into the counter)
-  before the controllers move the arms to the park pose. Driving there later is fine.
+## What the simulation does
 
-## Navigation (milestone 2)
+- **Kitchen and robot:** the lab's IAI kitchen model and the lab's PR2 model in Gazebo Harmonic.
+- **Navigation:** Nav2 drives the robot between the sink counter and the kitchen island on a map
+  generated from the kitchen model.
+- **Perception:** a simulated head camera detects an object when it is inside the camera's field of view.
+- **Pick and place:** arm inverse kinematics, grasp, carry and place; the result is checked against
+  the object's goal (5 cm tolerance).
+- **Task logic:** a behaviour tree (BehaviorTree.CPP) for *set the table* and *clean the table*.
+  Each action calls one robot skill.
+- **Explanations (first version):** every skill answers with what happened and why, for example
+  *"breakfast_cereal is 12 deg right of the camera's field of view (the head points elsewhere)"*. After each run the
+  runner writes a summary: *What did the robot do? Did anything go wrong, and why? Result.*
 
-- **Driving:** the PR2 base is moved by a planar velocity command (`/cmd_vel`, holonomic like the
-  real PR2); the fixed casters are frictionless so they slide.
-- **Base laser:** a lidar on `base_laser_link` publishes `/scan`. It covers 230 deg instead of
-  the real Hokuyo's 270 deg: the outermost beams hit the PR2's own rear base corners, and those
-  points inside the footprint made Nav2's collision monitor stop every motion command.
-- **Map:** `maps/kitchen.pgm` is generated by `scripts/make_kitchen_map.py` from
-  `config/kitchen_footprints.json`, the footprint of every kitchen part measured with the lab's
-  own physics engine (pybullet) on the lab's kitchen model - the same kitchen, not a SLAM scan.
-- **Nav2:** `config/nav2_params.yaml` is generated by `scripts/make_nav2_params.py` from Jazzy's
-  defaults: holonomic MPPI controller, footprint of the PR2 *with the lab's parked arms*
-  (1.44 m wide: the elbows stick out 0.67 m to each side), goal tolerance 8 cm / 6 deg.
-  No localization node: the simulator's odometry is exact, so `map` = `odom`.
-- **Standing poses** (`scripts/nav_test.py`): counter (0.70, 0.25, 0 deg) and island
-  (-0.22, 0.75, 180 deg). The lab places objects on the island from (-1.23, 0.6), which is
-  *inside* the island (x -1.47 to -0.67); in physics the robot must stand at its front edge.
-  The passage to the dining table (1.43 m) is narrower than the PR2 with parked arms.
-- **Turning point:** turning in place, the PR2 with parked arms sweeps a circle of 0.81 m radius.
-  In front of the counter it has only 0.54 m, so it cannot turn there (Nav2 stalled in
-  "Failed to make progress"). The aisle is 1.85 m wide, enough only at its centre line, so each
-  leg that changes heading is three steps: back out to the aisle centre (0.255, 0.5) without
-  turning, turn there, drive to the standing pose. `nav_test.py` logs each step with its reason.
+Results of a full run from a fresh start (simulated time):
 
-Result of `nav_test.py --rounds 2` (simulated time, 2026-11-16):
+| Scenario | Result | Time | Distance of milk / cereal / bowl from their goals |
+|----------|--------|------|---------------------------------------------------|
+| set the table (counter → island) | success | 158 s | 1.0 / 0.1 / 0.3 cm |
+| clean the table (island → counter) | success | 127 s | 1.1 / 1.4 / 0.3 cm |
 
-| Leg | Goal | Result | Time | Driven | Stop error | Heading error | Recoveries |
-|-----|------|--------|------|--------|------------|---------------|------------|
-| 1 | counter | succeeded | 10.2 s | 0.93 m | 7.6 cm | 0.7 deg | 0 |
-| 2 | island  | succeeded |  9.5 s | 0.93 m | 7.5 cm | 0.5 deg | 0 |
-| 3 | counter | succeeded |  9.7 s | 0.93 m | 7.4 cm | 0.3 deg | 0 |
-| 4 | island  | succeeded |  8.5 s | 0.95 m | 6.6 cm | 0.5 deg | 0 |
+## How to run it
 
-The stop error sits just inside the 8 cm goal tolerance; tighten `xy_goal_tolerance` in
-`make_nav2_params.py` if grasping later needs the robot closer.
+### Requirements
+
+- Ubuntu 24.04 (native or WSL 2 on Windows) with a graphics driver that supports OpenGL
+- ROS 2 Jazzy and Gazebo Harmonic
+- About 8 GB RAM; a full run takes 3–5 minutes
+
+Install the dependencies once:
 
 ```bash
-ros2 launch kitchen_gazebo kitchen_nav.launch.py      # simulation + Nav2 + RViz ("2D Goal Pose")
-ros2 run kitchen_gazebo nav_test.py --rounds 2        # counter <-> island, logged to ~/kitchen_nav_runs
+sudo apt update
+sudo apt install ros-jazzy-desktop ros-jazzy-ros-gz ros-jazzy-navigation2 ros-jazzy-nav2-bringup \
+                 ros-jazzy-behaviortree-cpp python3-colcon-common-extensions python3-numpy python3-yaml
 ```
 
-## Objects, perception, pick and place, behaviour tree (milestone 3)
-
-New packages: `kitchen_interfaces` (the `Skill` service) and `kitchen_bt` (the behaviour tree).
-
-- **Objects:** milk, breakfast cereal and bowl use the lab's meshes (`models/*/meshes`, same
-  files as in the CRAM repo) with box/cylinder collisions of the mesh's size. Their start and
-  goal poses are in `config/scene.yaml`, which also explains where they differ from the lab:
-  the lab's milk (1.4, 0.2) and bowl (1.4, 0.0) stand above the sink basin, and its bowl goal
-  (-0.68, 0.6) is on the island's edge and overlaps the milk goal. Here the three stand left of
-  the sink and go to the island as cereal (left), bowl (centre), milk (right).
-- **Robot skills** (`scripts/kitchen_skills.py`, service `/kitchen_skills/execute`): move_torso,
-  park_arms, look_at, navigate, detect, pick, place, object_pose, state. Every answer says what
-  happened and why, e.g. *"breakfast_cereal not seen: it is 12 deg right of the camera's field of
-  view"* or *"right arm cannot reach the milk: target is 0.95 m from the right shoulder, beyond
-  the arm's reach"*. Answers are also published on `/kitchen_skills/events`.
-- **Perception:** a simulated head camera ("logical camera"): an object is detected when its
-  centre is inside the field of view (57 x 45 deg, 0.4-3.5 m) of the PR2's `head_plate_frame`.
-  No occlusion.
-- **Arms:** `scripts/pr2_ik.py` solves the arm's inverse kinematics on the lab's PR2 model
-  (numpy, damped least squares). The PR2's wrist bends only one way, so pointing the gripper
-  forward with the forearm sloping up needs the forearm rolled by 180 deg; the solver's start
-  poses include that. Pre-grasp 10 cm behind the object (or from above if that is out of reach),
-  grasp, lift 6 cm, carry 0.55 m in front of the robot at 1.15 m height (above every counter
-  top and above the cereal box, the tallest object on the table).
-- **Holding:** a fixed joint between gripper and object (Gazebo `DetachableJoint`, one per
-  gripper and object), attached at the grasp and released at the place pose. The fingers stay
-  open: contact physics cannot hold a box between the PR2's fingertips reliably. Harmonic welds
-  each object to the grippers as soon as it appears, so the objects are spawned after the arms
-  are parked and the skills server releases them once at start-up.
-- **Behaviour tree** (`kitchen_bt/behavior_trees/kitchen_tasks.xml`): SetTable / CleanTable =
-  PrepareRobot (park arms, raise torso to 0.30 m) + TransportObject per object: navigate to the
-  surface, look and detect (fallback: re-read the robot pose, look again, detect, up to 2 times),
-  pick, navigate, place, check the object is within 5 cm of its goal. Each action is one skill
-  call. The runner writes `~/kitchen_bt_runs/<scenario>_<time>.jsonl` (every status change and
-  skill answer), a `.btlog` for Groot2, and `_explanation.txt`:
-  *What did the robot do? / Did anything go wrong, and why? / Result*.
+### Quick start
 
 ```bash
-bash run_milestone3.sh set          # build, start everything, set the table
-bash run_milestone3.sh clean        # ... and clear it again (objects must be on the island)
-
-# or step by step:
-ros2 launch kitchen_gazebo kitchen_tasks.launch.py              # simulation + Nav2 + skills
-ros2 run kitchen_bt kitchen_bt_runner --scenario set [--groot]  # behaviour tree
-ros2 run kitchen_gazebo skills_demo.py --scenario set           # same steps without the tree
+git clone https://github.com/AmirHosseinA47/XCPS---Domestic-Object-Transportation-Robot.git
+cd XCPS---Domestic-Object-Transportation-Robot
+bash run_demo.sh set      # build, start the simulation, set the table
 ```
 
-Problems found in the first Gazebo runs, and their fixes (each is now part of the explanation
-the robot gives, or prevented):
+`run_demo.sh` builds the workspace, starts Gazebo, Nav2, RViz and the robot skills, and then runs the
+behaviour tree. Press Enter at the end to stop the simulation. To clear the table instead, run
+`bash run_demo.sh clean` (the objects must be on the island, e.g. after a `set` run in the same
+simulation — see the step-by-step commands below).
 
-| Seen | Cause | Fix |
-|------|-------|-----|
-| Torso stopped at 0.26 m instead of 0.30 m | Gazebo caps the PID's integral term at 1 N by default | integral limit = force limit (`make_gazebo_urdfs.py`) |
-| Cereal fell off the island | goal only 6 cm from the island's end (y 0.494) | goals 25+ cm from the end, robot stands at y 0.95 |
-| Milk pushed 13 cm after placing (caught by `CheckObjectAt`) | arm swung from the place pose straight to the park pose, through the objects | withdraw: up, back, through the high carry pose, then park; the place skill now reports "released X cm from the target, then pushed Y cm while the arm withdrew" |
-| One place step took 110 s | numeric Jacobian in the IK; unreachable retreat pose tried with all seeds | analytic Jacobian (failed solve 1.1 s -> 0.3 s), retreat tries 3 offsets |
+### Step by step
 
-| A place drifted to 4.7 cm in one run; a correction made *after* lowering knocked the milk over | the arm stops within 0.04 rad per joint (a few cm at full reach); correcting in contact dragged the object | before lowering, the place skill measures the held object 8 cm above the surface and shifts the arm (up to 2x); the message says when it did |
-
-Final test from a fresh start (behaviour tree in Gazebo, 2026-11-17, logs in `~/kitchen_bt_runs/`):
-
-| Scenario | Result | Time | milk | breakfast cereal | bowl |
-|----------|--------|------|------|------------------|------|
-| set the table (counter -> island) | SUCCESS, nothing went wrong | 158 s | 1.0 cm | 0.1 cm | 0.3 cm |
-| clean the table (island -> counter) | SUCCESS, nothing went wrong | 127 s | 1.1 cm | 1.4 cm | 0.3 cm |
-
-(distance of each object from its goal after the run; the tree's `CheckObjectAt` allows 5 cm)
-
-## Build and run (WSL terminal)
+Build once, then use a new terminal for each command (each terminal needs the two `source` lines):
 
 ```bash
 source /opt/ros/jazzy/setup.bash
-cd /mnt/e/Projects/XCPS_Kitchen_Gazebo
 colcon build
 source install/setup.bash
-ros2 launch kitchen_gazebo kitchen_sim.launch.py              # Gazebo window + RViz
-ros2 launch kitchen_gazebo kitchen_sim.launch.py gui:=false   # headless Gazebo, RViz only
-ros2 launch kitchen_gazebo kitchen_sim.launch.py x:=0.2 y:=0.6 yaw:=0.0
 ```
-
-Move a joint (e.g. raise the torso to the lab's "high" 0.3 m):
 
 ```bash
-gz topic -t /pr2/torso_lift_joint/cmd_pos -m gz.msgs.Double -p "data: 0.3"
+# Terminal 1: simulation + Nav2 + robot skills (wait for "kitchen skills ready")
+ros2 launch kitchen_gazebo kitchen_tasks.launch.py
+
+# Terminal 2: the behaviour tree
+ros2 run kitchen_bt kitchen_bt_runner --scenario set      # then: --scenario clean
+#   --groot   also stream the tree live to Groot2 (port 1667)
 ```
 
-After changing `make_gazebo_urdfs.py`: `python3 src/kitchen_gazebo/scripts/make_gazebo_urdfs.py && colcon build`.
+Other entry points:
 
-## Topics (ROS 2)
+```bash
+ros2 launch kitchen_gazebo kitchen_sim.launch.py              # only the robot in the kitchen
+ros2 launch kitchen_gazebo kitchen_sim.launch.py gui:=false   # same, without the Gazebo window
+ros2 launch kitchen_gazebo kitchen_nav.launch.py              # simulation + Nav2 ("2D Goal Pose" in RViz)
+ros2 run kitchen_gazebo nav_test.py --rounds 2                # drive counter <-> island and log it
+ros2 run kitchen_gazebo skills_demo.py --scenario set         # the same task without the behaviour tree
+```
 
-`/joint_states`, `/odom`, `/tf` (odom → base_footprint), `/robot_description`,
-`/kitchen/robot_description`, `/clock`.
+Call a single robot skill (skills: `state`, `park_arms`, `move_torso`, `navigate`, `look_at`,
+`detect`, `pick`, `place`, `object_pose`):
+
+```bash
+ros2 service call /kitchen_skills/execute kitchen_interfaces/srv/Skill \
+  "{skill: navigate, params_json: '{\"to\": \"counter\"}'}"
+```
+
+### Output
+
+| Where | What |
+|-------|------|
+| `~/kitchen_bt_runs/<scenario>_<time>.jsonl` | every behaviour-tree status change and skill answer |
+| `~/kitchen_bt_runs/<scenario>_<time>_explanation.txt` | the run summary: what the robot did, what went wrong and why, result |
+| `~/kitchen_bt_runs/<scenario>_<time>.btlog` | behaviour-tree log that Groot2 can replay |
+| `/kitchen_skills/events` (ROS topic) | every skill answer, live |
+| `~/kitchen_tasks.log` | simulation log when started with `run_demo.sh` |
+
+### Troubleshooting
+
+- **The simulation is very slow or Gazebo shows no window (WSL):** update WSL (`wsl --update`) and the
+  Windows graphics driver; `gui:=false` runs Gazebo without its window, RViz still shows the robot.
+- **The behaviour tree waits forever:** the robot skills start about 20 s after the simulation; wait for
+  `kitchen skills ready` in terminal 1.
+- **Processes from an earlier run are still alive:** close all terminals of the previous run (or stop
+  them with Ctrl+C) before starting a new one.
+
+## Repository layout
+
+| Package | Contents |
+|---------|----------|
+| `src/kitchen_gazebo` | Gazebo world, launch files, Nav2 configuration and map, objects, RViz configs, and the scripts: robot skills server (`kitchen_skills.py`), arm IK (`pr2_ik.py`), generators for the Gazebo models, map and Nav2 parameters |
+| `src/kitchen_bt` | behaviour tree for setting and clearing the table (`behavior_trees/kitchen_tasks.xml`) and its runner, which writes the explanation log |
+| `src/kitchen_interfaces` | `Skill.srv`: one robot skill call (skill name + JSON parameters → success, reason, JSON result) |
+| `src/pr2_description` | the lab's PR2 model (from PyCRAM); meshes from `PR2/pr2_common` (BSD) |
+| `src/iai_kitchen` | the lab's IAI kitchen model (from PyCRAM); meshes from `code-iai/iai_maps` |
+| `docs/` | recordings and pictures of the original lab and the simulation |
+
+Generated files are already in the repository. After changing a generator script, run it again and
+rebuild, e.g. `python3 src/kitchen_gazebo/scripts/make_gazebo_urdfs.py && colcon build`.
+
+## Notes
+
+- **Robot:** the project does not have to use the exact PR2 — any robot with the same functionality
+  (mobile base, a camera it can aim, at least one arm with a gripper that reaches counter height) is
+  fine. The simulation currently uses the lab's PR2. If the robot is changed, the kitchen, objects,
+  behaviour tree and explanation layer stay; the robot model, the arm IK and the Nav2 footprint change.
+- **Differences to the original lab:** the robot starts at (0.2, 0.6) instead of (1, 2), where its
+  base would be inside the oven; the objects stand next to the sink instead of above its basin; the
+  goals on the island are spread so the objects do not touch; the robot stands at the island's edge
+  instead of inside it. Gripping is simulated with a fixed joint between gripper and object.
+- **Licenses:** the kitchen meshes come from `code-iai/iai_maps`, which declares no license; keep this
+  in mind before making the repository public.
