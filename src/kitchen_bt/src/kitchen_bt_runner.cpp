@@ -254,14 +254,9 @@ class PickObject : public SkillAction {
   PickObject(const std::string& n, const BT::NodeConfig& c, std::shared_ptr<Context> ctx)
       : SkillAction(n, c, ctx, "pick") {}
   static BT::PortsList providedPorts() {
-    return {BT::InputPort<std::string>("object"), BT::OutputPort<std::string>("arm", "l or r")};
+    return {BT::InputPort<std::string>("object")};
   }
   json params() override { return {{"object", input<std::string>("object")}}; }
-  void onResult(const json& r) override {
-    if (r.contains("arm")) {
-      setOutput("arm", r["arm"].get<std::string>());
-    }
-  }
 };
 
 class PlaceObject : public SkillAction {

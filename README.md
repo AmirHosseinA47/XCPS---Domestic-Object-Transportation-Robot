@@ -5,9 +5,9 @@ WS 2026/27).
 
 ## What this project is about
 
-A mobile robot sets the table in a kitchen: it finds milk, cereal and a bowl on the counter, picks them
-up, carries them to the kitchen island and places them there — or clears the table again. Robots like
-this make many decisions on their own (where to stand, which arm to use, what to do after a failure),
+A mobile robot sets the table in a kitchen: it finds milk, cereal and a bowl on the counter, takes them,
+carries them to the kitchen island and sets them down there — or clears the table again. Robots like
+this make many decisions on their own (where to stand, where to look, what to do after a failure),
 and people watching them often cannot tell what the robot is doing or why.
 
 The goal of the project is to make the robot **explainable**: to find out which explanations are needed,
@@ -35,20 +35,32 @@ run with real physics and real navigation, and every robot action reports what h
 - **Navigation:** Nav2 drives the robot between the sink counter and the kitchen island on a map
   generated from the kitchen model.
 - **Perception:** a simulated head camera detects an object when it is inside the camera's field of view.
-- **Pick and place:** arm inverse kinematics, grasp, carry and place; the result is checked against
-  the object's goal (5 cm tolerance).
+- **Carrying:** the robot does not grasp with its arms. When it has seen an object within reach, it
+  loads it onto a carry tray in front of its torso, drives to the goal and sets it down upright —
+  after checking that the goal is within reach and free. Taking and setting down are pose changes in
+  the simulator, not physics; on the tray a fixed joint holds the object while the robot drives. The
+  result is checked against the object's goal (5 cm tolerance). Grasping with the arms is not needed
+  for the project (decided with the professor), so the arms stay parked.
 - **Task logic:** a behaviour tree (BehaviorTree.CPP) for *set the table* and *clean the table*.
   Each action calls one robot skill.
 - **Explanations (first version):** every skill answers with what happened and why, for example
   *"breakfast_cereal is 12 deg right of the camera's field of view (the head points elsewhere)"*. After each run the
   runner writes a summary: *What did the robot do? Did anything go wrong, and why? Result.*
 
-Results of a full run from a fresh start (simulated time):
+Results of a full run from a fresh start (simulated time, two runs in a row):
 
 | Scenario | Result | Time | Distance of milk / cereal / bowl from their goals |
 |----------|--------|------|---------------------------------------------------|
-| set the table (counter → island) | success | 158 s | 1.0 / 0.1 / 0.3 cm |
-| clean the table (island → counter) | success | 127 s | 1.1 / 1.4 / 0.3 cm |
+| set the table (counter → island) | success | 106 s (both runs) | 0.0 / 0.1 / 0.2 cm |
+| clean the table (island → counter) | success | 83–88 s | 0.0 / 0.1 / 0.2 cm |
+
+Typical explanations when something is not possible (each is the skill's own answer):
+
+- *"the milk has not been seen yet; the robot must detect it before taking it"*
+- *"the tray already carries the milk; it holds one object at a time"*
+- *"the goal spot on the counter is occupied: the bowl stands 0 cm from it, the milk would touch it"*
+- *"the goal (-1.40, 1.20) on the island is 1.27 m from the robot centre, beyond its 0.85 m reach (0.42 m too
+  far; the robot must stand closer)"*
 
 ## How to run it
 
@@ -139,7 +151,7 @@ ros2 service call /kitchen_skills/execute kitchen_interfaces/srv/Skill \
 
 | Package | Contents |
 |---------|----------|
-| `src/kitchen_gazebo` | Gazebo world, launch files, Nav2 configuration and map, objects, RViz configs, and the scripts: robot skills server (`kitchen_skills.py`), arm IK (`pr2_ik.py`), generators for the Gazebo models, map and Nav2 parameters |
+| `src/kitchen_gazebo` | Gazebo world, launch files, Nav2 configuration and map, objects, RViz configs, and the scripts: robot skills server (`kitchen_skills.py`), PR2 kinematics for aiming the head (`pr2_ik.py`), generators for the Gazebo models, map and Nav2 parameters |
 | `src/kitchen_bt` | behaviour tree for setting and clearing the table (`behavior_trees/kitchen_tasks.xml`) and its runner, which writes the explanation log |
 | `src/kitchen_interfaces` | `Skill.srv`: one robot skill call (skill name + JSON parameters → success, reason, JSON result) |
 | `src/pr2_description` | the lab's PR2 model (from PyCRAM); meshes from `PR2/pr2_common` (BSD) |
@@ -152,12 +164,12 @@ rebuild, e.g. `python3 src/kitchen_gazebo/scripts/make_gazebo_urdfs.py && colcon
 ## Notes
 
 - **Robot:** the project does not have to use the exact PR2 — any robot with the same functionality
-  (mobile base, a camera it can aim, at least one arm with a gripper that reaches counter height) is
-  fine. The simulation currently uses the lab's PR2. If the robot is changed, the kitchen, objects,
-  behaviour tree and explanation layer stay; the robot model, the arm IK and the Nav2 footprint change.
+  (mobile base, a camera it can aim, a way to carry the objects) is fine. The simulation uses the
+  lab's PR2. If the robot is changed, the kitchen, objects, behaviour tree and explanation layer stay;
+  the robot model, the head aiming and the Nav2 footprint change.
 - **Differences to the original lab:** the robot starts at (0.2, 0.6) instead of (1, 2), where its
   base would be inside the oven; the objects stand next to the sink instead of above its basin; the
   goals on the island are spread so the objects do not touch; the robot stands at the island's edge
-  instead of inside it. Gripping is simulated with a fixed joint between gripper and object.
+  instead of inside it. Instead of grasping, the robot carries each object on a tray (see Carrying).
 - **Licenses:** the kitchen meshes come from `code-iai/iai_maps`, which declares no license; keep this
   in mind before making the repository public.

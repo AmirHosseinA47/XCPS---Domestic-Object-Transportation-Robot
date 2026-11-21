@@ -2,7 +2,9 @@
 <!--
   Kitchen transport scenario in Gazebo: set the table (counter -> island) and clean it
   (island -> counter). Same structure as the lab's plan (sunava/pycram transport_demo.py):
-  prepare the robot, then for each object: go to it, find it, pick it, carry it, place it.
+  prepare the robot, then for each object: go to it, find it, take it, carry it, set it down.
+  The robot does not grasp: PickObject loads the object onto the carry tray in front of the
+  torso and PlaceObject sets it down at the goal (see kitchen_skills.py).
 
   Positions (map frame, metres) match src/kitchen_gazebo/config/scene.yaml. Where they differ
   from the lab, that file says why (lab poses over the sink basin / on the island's edge).
@@ -66,9 +68,9 @@
           </Sequence>
         </RetryUntilSuccessful>
       </Fallback>
-      <PickObject name="pick_object" object="{object}" arm="{arm}"/>
+      <PickObject name="load_object" object="{object}"/>
       <NavigateTo name="carry_to_target" place="{target}"/>
-      <PlaceObject name="place_object" object="{object}" goal="{goal}" surface="{target}"/>
+      <PlaceObject name="set_object_down" object="{object}" goal="{goal}" surface="{target}"/>
       <CheckObjectAt name="check_object_at_goal" object="{object}" goal="{goal}" tolerance="0.05"/>
     </Sequence>
   </BehaviorTree>

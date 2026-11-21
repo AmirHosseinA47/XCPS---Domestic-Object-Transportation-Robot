@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """Forward and inverse kinematics of the PR2 arms, read from the lab's PR2 URDF (numpy only).
 
+Used now for its forward kinematics (Chain): kitchen_skills.py aims the head with it. The arm IK
+is no longer used, since the robot carries objects on a tray instead of grasping them; it stays
+for a robot that grasps.
+
 The IK places the gripper's tool frame (between the fingertips) at a position in the robot's
 base frame with a given orientation, using the 7 arm joints; the torso height stays as it is.
 It is a damped least-squares solver started from several seed poses, which is enough for the

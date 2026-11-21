@@ -42,8 +42,8 @@ def generate_launch_description():
     resource_paths.append(os.path.join(share, 'models'))   # model://milk etc.
 
     # The objects stand on the counter (config/scene.yaml). They are spawned after the PR2 has
-    # parked its arms: Harmonic welds each object to the grippers when it appears, and
-    # kitchen_skills.py lets go of them right away, which must not happen while the arms move.
+    # parked its arms: Harmonic welds each object to the carry tray when it appears, and
+    # kitchen_skills.py lets go of them right away.
     with open(os.path.join(share, 'config', 'scene.yaml')) as f:
         scene = yaml.safe_load(f)
     spawn_objects = [

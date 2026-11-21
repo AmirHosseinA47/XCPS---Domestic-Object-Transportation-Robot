@@ -15,13 +15,17 @@ How the parts work:
   - detect: a simulated head camera (a "logical camera"): an object is seen when its centre is
     inside the camera's field of view (57 x 45 deg, 0.4-3.5 m) of the PR2's head_plate_frame.
     Object poses come from the simulator; occlusion is not modelled.
-  - pick / place: arm motions from pr2_ik (the lab's PR2 kinematics), interpolated in joint
-    space. Holding is a fixed joint between gripper and object (Gazebo DetachableJoint); the
-    fingers stay open, Gazebo's contact physics cannot hold a box between the PR2's fingertips.
+  - pick / place: the robot does not grasp. It loads the object onto the carry tray in front of
+    its torso and sets it down at the goal, with the same checks an arm would need: the object
+    must have been seen and be within reach, the goal must be within reach and free. Moving the
+    object is a pose change in the simulator (gz service set_pose); on the tray a fixed joint
+    (Gazebo DetachableJoint) holds it while the robot drives. Grasping with the arms is not
+    needed for the project (decided with the professor) and was the slowest, least reliable part.
 """
 import json
 import math
 import os
+import subprocess
 import threading
 import time
 
@@ -36,27 +40,33 @@ from rclpy.action import ActionClient
 from rclpy.callback_groups import ReentrantCallbackGroup
 from rclpy.executors import MultiThreadedExecutor
 from rclpy.node import Node
+from rclpy.qos import QoSProfile
 from rclpy.time import Time
 from sensor_msgs.msg import JointState
 from std_msgs.msg import Empty, Float64, String
 from tf2_msgs.msg import TFMessage
 from tf2_ros import Buffer, TransformListener
 
-from make_gazebo_urdfs import CONTROLLED_JOINTS, GRASPABLE_OBJECTS
-from pr2_ik import ArmIK, Chain, default_seeds, grasp_rotation
+from make_gazebo_urdfs import CARRIED_OBJECTS, CONTROLLED_JOINTS, TRAY
+from pr2_ik import Chain
 
-# Object geometry from the lab meshes: bounding-box size, mesh centre relative to the model
-# origin, and where the tool grasps relative to that centre (height).
+# Object geometry from the lab meshes: bounding-box size and mesh centre relative to the model origin.
 OBJECTS = {
-    'milk': {'size': (0.064, 0.065, 0.194), 'center': (0.0, 0.0, 0.009), 'grasp_dz': 0.0},
-    'breakfast_cereal': {'size': (0.147, 0.058, 0.224), 'center': (-0.001, -0.001, 0.010), 'grasp_dz': 0.0},
-    'bowl': {'size': (0.140, 0.139, 0.067), 'center': (0.0, -0.002, 0.0015), 'grasp_dz': 0.02},
+    'milk': {'size': (0.064, 0.065, 0.194), 'center': (0.0, 0.0, 0.009)},
+    'breakfast_cereal': {'size': (0.147, 0.058, 0.224), 'center': (-0.001, -0.001, 0.010)},
+    'bowl': {'size': (0.140, 0.139, 0.067), 'center': (0.0, -0.002, 0.0015)},
 }
 SIDE_NAME = {'l': 'left', 'r': 'right'}
-CARRY_TOOL = (0.55, 0.20, 1.15)   # tool in front of the robot, above every counter top
-PRE_GRASP_OFFSETS = ((-0.10, 0.0), (-0.08, 0.05), (-0.05, 0.08), (0.0, 0.10))  # (back, up)
-RETREAT_OFFSETS = ((-0.10, 0.08), (-0.05, 0.10), (0.0, 0.12))                    # after placing
-GRIPPER_OPEN, GRIPPER_CLOSED = 0.45, 0.0
+ARM_JOINTS = {s: [n for n in CONTROLLED_JOINTS if n.startswith(f'{s}_') and 'gripper' not in n] for s in 'lr'}
+GRIPPER_CLOSED = 0.0
+# Where the robot can take an object from or put it down: in front of it, at most REACH from the
+# robot centre (about the PR2 arm's reach from its shoulders), on a surface 0.5-1.3 m high.
+REACH = 0.85
+MIN_FRONT = 0.25
+SURFACE_HEIGHTS = (0.5, 1.3)
+# Torso link origin above base_footprint with the torso at 0 (base_footprint_joint + torso_lift_joint).
+TORSO_ORIGIN = (-0.05, 0.0, 0.051 + 0.739675)
+WORLD = 'kitchen'
 CAMERA_FRAME = 'head_plate_frame'
 CAMERA_FOV = (1.0, 0.8)           # horizontal, vertical (rad)
 CAMERA_RANGE = (0.4, 3.5)
@@ -106,7 +116,6 @@ class KitchenSkills(Node):
         with open(os.path.join(share, 'config', 'scene.yaml')) as f:
             self.scene = yaml.safe_load(f)
         urdf = os.path.join(get_package_share_directory('pr2_description'), 'urdf', 'pr2_lab.urdf')
-        self.ik = {s: ArmIK(urdf, s) for s in 'lr'}
         self.head_pan_chain = Chain(urdf, 'base_footprint', 'head_pan_link')
         self.head_tilt_chain = Chain(urdf, 'base_footprint', 'head_tilt_link')
         self.park = {n: v for n, v in CONTROLLED_JOINTS.items()}
@@ -114,14 +123,22 @@ class KitchenSkills(Node):
         self.tf = Buffer()
         self.tf_listener = TransformListener(self.tf, self)
         self.joints, self.objects, self.detected = {}, {}, {}
-        self.holding = {'l': None, 'r': None}   # side -> {'object', 'offset' (robot frame)}
-        self.create_subscription(JointState, '/joint_states', self.on_joints, 10, callback_group=self.cb)
-        for obj in GRASPABLE_OBJECTS:
+        self.carrying = None   # {'object', 'yaw'}: what is on the tray, and its yaw before loading
+        # Joint states and object poses arrive at up to 500 Hz; only the newest one matters. A queue of
+        # 10 let this Python node fall behind, and then even its TF was read 1-2 s late (tested).
+        latest = QoSProfile(depth=1)
+        self.create_subscription(JointState, '/joint_states', self.on_joints, latest, callback_group=self.cb)
+        for obj in CARRIED_OBJECTS:
             self.create_subscription(TFMessage, f'/objects/{obj}/pose',
-                                     lambda m, o=obj: self.on_object(o, m), 10, callback_group=self.cb)
+                                     lambda m, o=obj: self.on_object(o, m), latest, callback_group=self.cb)
         self.cmd = {j: self.create_publisher(Float64, f'/pr2/{j}/cmd_pos', 10) for j in CONTROLLED_JOINTS}
-        self.grip = {(s, o, a): self.create_publisher(Empty, f'/pr2/{s}_gripper/{a}/{o}', 10)
-                     for s in 'lr' for o in GRASPABLE_OBJECTS for a in ('attach', 'detach')}
+        self.tray = {(o, a): self.create_publisher(Empty, f'/pr2/tray/{a}/{o}', 10)
+                     for o in CARRIED_OBJECTS for a in ('attach', 'detach')}
+        self.tray_state = {}   # object -> "attached" / "detached", as Gazebo reports it
+        for obj in CARRIED_OBJECTS:
+            self.create_subscription(String, f'/pr2/tray/state/{obj}',
+                                     lambda m, o=obj: self.tray_state.__setitem__(o, m.data), 10,
+                                     callback_group=self.cb)
         self.events = self.create_publisher(String, '/kitchen_skills/events', 10)
         self.nav = ActionClient(self, NavigateToPose, 'navigate_to_pose', callback_group=self.cb)
         self.create_service(Skill, '/kitchen_skills/execute', self.execute, callback_group=self.cb)
@@ -143,9 +160,29 @@ class KitchenSkills(Node):
                                       'stamp': time.time()}
                 return
 
-    def robot_pose(self):
-        t = self.tf.lookup_transform('map', 'base_footprint', Time())
+    def robot_pose(self, fresh=False):
+        """Robot pose in the map (x, y, yaw). fresh=True: see transform()."""
+        t = self.transform('base_footprint', fresh)
         return t.transform.translation.x, t.transform.translation.y, yaw_of(t.transform.rotation)
+
+    def transform(self, frame, fresh=True):
+        """map -> frame. This Python node can receive TF up to ~1.5 s late while the robot drives
+        (tested: right after Nav2 reported the goal, the buffered pose was still 0.5 m behind). With
+        fresh=True it waits (up to 5 s) until the transform stops changing: the robot has stopped,
+        so the newest transform is then the current one."""
+        last, t0 = None, time.time()
+        while True:
+            t = self.tf.lookup_transform('map', frame, Time())
+            if not fresh:
+                return t
+            p, q = t.transform.translation, t.transform.rotation
+            now = np.array([p.x, p.y, p.z, q.x, q.y, q.z, q.w])
+            if last is not None and np.max(np.abs(now - last)) < 0.002:
+                return t
+            if time.time() - t0 > 5.0:
+                return t
+            last = now
+            time.sleep(0.3)
 
     def to_robot(self, p, pose=None):
         x, y, yaw = pose or self.robot_pose()
@@ -155,12 +192,12 @@ class KitchenSkills(Node):
 
     # ------------------------------------------------------------------ start-up
     def release_objects(self):
-        """Harmonic welds every object to both grippers when it appears; let them go once."""
-        while rclpy.ok() and not (self.joints and all(o in self.objects for o in GRASPABLE_OBJECTS)):
+        """Harmonic welds every object to the tray when it appears; let them go once."""
+        while rclpy.ok() and not (self.joints and all(o in self.objects for o in CARRIED_OBJECTS)):
             time.sleep(0.5)
         time.sleep(1.0)
         for _ in range(6):
-            for (s, o, a), pub in self.grip.items():
+            for (o, a), pub in self.tray.items():
                 if a == 'detach':
                     pub.publish(Empty())
             time.sleep(0.3)
@@ -216,7 +253,7 @@ class KitchenSkills(Node):
 
     def move_arm(self, side, goal, what):
         """Moves one arm to `goal` (joint values) along a straight line in joint space."""
-        names = self.ik[side].names
+        names = ARM_JOINTS[side]
         q0 = np.array([self.joints[n] for n in names])
         q1 = np.array([goal[n] for n in names])
         for i, n in enumerate(names):   # continuous joints: go the short way round
@@ -235,25 +272,11 @@ class KitchenSkills(Node):
                              f'{stuck[1]:.2f} rad short (blocked by something?)')
         return duration
 
-    def solve(self, side, tool, what):
-        sol, why = self.ik[side].solve(tool, grasp_rotation(0.0), self.joints.get('torso_lift_joint', 0.0),
-                                       [self.current_arm(side)] + default_seeds(side))
-        if sol is None:
-            raise SkillError(f'{SIDE_NAME[side]} arm cannot reach {what}: {why}')
-        return sol
-
-    def current_arm(self, side):
-        return {n: self.joints.get(n, 0.0) for n in self.ik[side].names}
-
-    def tool_in_robot(self, side):
-        return self.ik[side].tool_pose({**self.current_arm(side),
-                                        'torso_lift_joint': self.joints.get('torso_lift_joint', 0.0)})[:3, 3]
-
     # ------------------------------------------------------------------ skills
     def state(self, _p):
         x, y, yaw = self.robot_pose()
         return 'current state', {'robot': [x, y, yaw], 'torso': self.joints.get('torso_lift_joint'),
-                                 'holding': {s: (h or {}).get('object') for s, h in self.holding.items()},
+                                 'carrying': (self.carrying or {}).get('object'),
                                  'detected': sorted(self.detected)}
 
     def move_torso(self, p):
@@ -269,20 +292,15 @@ class KitchenSkills(Node):
                 f'(the PR2 torso moves 1.3 cm/s)'), {'height': height}
 
     def park_arms(self, _p):
-        done, kept = [], []
         for side in 'rl':
-            if self.holding[side]:
-                kept.append(f'{SIDE_NAME[side]} arm holds the {self.holding[side]["object"]}, kept in carry pose')
-                continue
-            self.move_arm(side, {n: self.park[n] for n in self.ik[side].names}, 'the park pose')
+            self.move_arm(side, {n: self.park[n] for n in ARM_JOINTS[side]}, 'the park pose')
             self.command({f'{side}_gripper_l_finger_joint': GRIPPER_CLOSED})
-            done.append(SIDE_NAME[side])
-        return '; '.join([f'{" and ".join(done)} arm parked' if done else 'no arm to park'] + kept), {}
+        return 'right and left arm parked', {}
 
     def look_at(self, p):
         target = np.array([float(p['x']), float(p['y']), float(p['z'])])
         torso = self.joints.get('torso_lift_joint', 0.0)
-        t = self.to_robot(target)
+        t = self.to_robot(target, self.robot_pose(fresh=True))
         pan_axis = self.head_pan_chain.fk({'torso_lift_joint': torso})[:3, 3]
         pan = max(-2.8, min(2.8, math.atan2(t[1] - pan_axis[1], t[0] - pan_axis[0])))
         tilt_axis = self.head_tilt_chain.fk({'torso_lift_joint': torso, 'head_pan_joint': pan})[:3, 3]
@@ -300,7 +318,7 @@ class KitchenSkills(Node):
         name = p['object']
         if name not in self.objects:
             raise SkillError(f'there is no {name} in the scene')
-        cam = self.tf.lookup_transform('map', CAMERA_FRAME, Time())
+        cam = self.transform(CAMERA_FRAME)
         rot = quat_matrix(cam.transform.rotation)
         origin = np.array([cam.transform.translation.x, cam.transform.translation.y, cam.transform.translation.z])
         obj = self.objects[name]
@@ -346,7 +364,7 @@ class KitchenSkills(Node):
         for what, (gx, gy, gyaw) in steps:
             self.nav_goal(gx, gy, gyaw, what)
             done.append(what)
-        ex, ey, eyaw = self.robot_pose()
+        ex, ey, eyaw = self.robot_pose(fresh=True)
         error = math.dist((ex, ey), (x, y))
         why = (' (a heading change of more than 30 deg needs the aisle centre: turning with parked arms '
                'sweeps a 0.81 m circle)' if len(steps) > 1 else '')
@@ -381,143 +399,158 @@ class KitchenSkills(Node):
             time.sleep(0.05)
         return True
 
-    def pick(self, p):
-        name = p['object']
-        if name not in self.detected:
-            raise SkillError(f'the {name} has not been seen yet; the robot must detect it before grasping')
-        geom, det = OBJECTS[name], self.detected[name]
-        phases = Phases(self.get_logger(), 'pick')
-        robot = self.robot_pose()
-        centre = self.to_robot((det['x'], det['y'], det['z']), robot)
-        side = p.get('arm') or ('l' if centre[1] > 0.1 else 'r')
-        if self.holding[side]:
-            other = 'r' if side == 'l' else 'l'
-            if self.holding[other]:
-                raise SkillError('both grippers are full')
-            side = other
-        dyaw = det['yaw'] - robot[2]
-        depth = abs(math.cos(dyaw)) * geom['size'][0] / 2 + abs(math.sin(dyaw)) * geom['size'][1] / 2
-        grasp = centre + np.array([-(depth + 0.01), 0.0, geom['grasp_dz']])
-        q_grasp = self.solve(side, grasp, f'the {name}')
-        q_pre, pre_note = None, ''
-        for back, up in PRE_GRASP_OFFSETS:
-            try:
-                q_pre = self.solve(side, grasp + np.array([back, 0.0, up]), 'the pre-grasp pose')
-                pre_note = '' if (back, up) == PRE_GRASP_OFFSETS[0] else f' (approached from {up * 100:.0f} cm above)'
-                break
-            except SkillError:
-                continue
-        if q_pre is None:
-            raise SkillError(f'{SIDE_NAME[side]} arm can reach the {name} but finds no way to approach it')
-        carry = np.array(CARRY_TOOL) * np.array([1, 1 if side == 'l' else -1, 1])
-        q_carry = self.solve(side, carry, 'the carry pose')
-        q_lift = self.solve(side, grasp + np.array([0.0, 0.0, 0.06]), 'the lift pose')
-        phases.mark('ik')
+    # ------------------------------------------------------------------ carrying
+    def tray_top(self, pose=None):
+        """Centre of the tray's top surface in the map frame (it rises with the torso)."""
+        x, y, yaw = pose or self.robot_pose()
+        tx = TORSO_ORIGIN[0] + TRAY['xyz'][0]
+        z = TORSO_ORIGIN[2] + self.joints.get('torso_lift_joint', 0.0) + TRAY['xyz'][2] + TRAY['size'][2] / 2
+        return np.array([x + math.cos(yaw) * tx, y + math.sin(yaw) * tx, z])
 
-        self.command({f'{side}_gripper_l_finger_joint': GRIPPER_OPEN})
-        self.move_arm(side, q_carry, 'the carry pose')
-        self.move_arm(side, q_pre, 'the pre-grasp pose')
-        self.move_arm(side, q_grasp, f'the {name}')
-        phases.mark('reach')
-        z_before = self.objects[name]['center'][2]
-        for _ in range(3):
-            self.grip[(side, name, 'attach')].publish(Empty())
-            time.sleep(0.2)
-        self.move_arm(side, q_lift, 'the lift pose')
+    def check_reach(self, point, what, pose=None):
+        """Raises SkillError, saying why, if `point` (map) is not where the robot can take or put things."""
+        rel = self.to_robot(point, pose)
+        distance = math.hypot(rel[0], rel[1])
+        if rel[0] < MIN_FRONT:
+            side = 'behind' if rel[0] < 0 else ('left of' if rel[1] > 0 else 'right of')
+            raise SkillError(f'{what} is {side} the robot ({rel[0]:.2f} m forward, {rel[1]:.2f} m to the side); '
+                             f'it can only take or put things in front of it')
+        if distance > REACH:
+            raise SkillError(f'{what} is {distance:.2f} m from the robot centre, beyond its {REACH:.2f} m reach '
+                             f'({distance - REACH:.2f} m too far; the robot must stand closer)')
+        if not SURFACE_HEIGHTS[0] <= point[2] <= SURFACE_HEIGHTS[1] + 0.3:
+            raise SkillError(f'{what} is at {point[2]:.2f} m height; it can only reach surfaces '
+                             f'{SURFACE_HEIGHTS[0]}-{SURFACE_HEIGHTS[1]} m high')
+        return distance
+
+    def tray_joint(self, name, action, timeout=2.0):
+        """Attaches the object to the tray or detaches it, and waits until Gazebo confirms. Moving an
+        object that was still attached made the joint fling it over (tested)."""
+        want = 'attached' if action == 'attach' else 'detached'
+        self.tray_state.pop(name, None)
+        t0 = time.time()
+        while time.time() - t0 < timeout:
+            self.tray[(name, action)].publish(Empty())
+            for _ in range(5):
+                time.sleep(0.02)
+                if self.tray_state.get(name) == want:
+                    return True
+        return False
+
+    @staticmethod
+    def gz_service(service, reqtype, req, what):
+        """Calls a Gazebo service (gz CLI); raises SkillError, saying what failed, if it does not answer true."""
+        try:
+            out = subprocess.run(['gz', 'service', '-s', f'/world/{WORLD}/{service}', '--reqtype', reqtype,
+                                  '--reptype', 'gz.msgs.Boolean', '--timeout', '3000', '--req', req],
+                                 capture_output=True, text=True, timeout=10)
+        except (OSError, subprocess.TimeoutExpired) as e:
+            raise SkillError(f'could not {what} in the simulator: {e}') from e
+        if 'data: true' not in out.stdout:
+            raise SkillError(f'the simulator refused to {what}: {(out.stdout + out.stderr).strip()[:200]}')
+
+    def set_pose(self, name, position, yaw):
+        """Moves a model in Gazebo (service /world/kitchen/set_pose)."""
+        req = (f'name: "{name}", position: {{x: {position[0]:.4f}, y: {position[1]:.4f}, z: {position[2]:.4f}}}, '
+               f'orientation: {{x: 0, y: 0, z: {math.sin(yaw / 2):.6f}, w: {math.cos(yaw / 2):.6f}}}')
+        self.gz_service('set_pose', 'gz.msgs.Pose', req, f'move the {name}')
+
+    def pause(self, paused):
+        self.gz_service('control', 'gz.msgs.WorldControl', f'pause: {"true" if paused else "false"}',
+                        'pause the simulation' if paused else 'resume the simulation')
+
+    def origin_for(self, name, centre_xy, top):
+        """Model origin that puts the object upright on a surface whose top is at `top`."""
+        geom = OBJECTS[name]
+        return np.array([centre_xy[0], centre_xy[1], top + geom['size'][2] / 2 - geom['center'][2] + 0.003])
+
+    def wait_still(self, name, timeout=3.0):
+        t0, last = time.time(), None
+        while time.time() - t0 < timeout:
+            time.sleep(0.25)
+            c = self.objects[name]['center'].copy()
+            if last is not None and np.linalg.norm(c - last) < 0.001:
+                return
+            last = c
+
+    def pick(self, p):
+        """Loads a seen object from a surface onto the carry tray."""
+        name = p['object']
+        if self.carrying:
+            raise SkillError(f'the tray already carries the {self.carrying["object"]}; it holds one object at a time')
+        if name not in self.detected:
+            raise SkillError(f'the {name} has not been seen yet; the robot must detect it before taking it')
+        obj = self.objects[name]
+        seen = np.array([self.detected[name][k] for k in ('x', 'y', 'z')])
+        if np.linalg.norm(obj['center'] - seen) > 0.05:
+            moved = np.linalg.norm(obj['center'][:2] - seen[:2])
+            self.detected.pop(name, None)
+            raise SkillError(f'the {name} is no longer where the robot saw it (moved {moved * 100:.0f} cm); '
+                             f'it must look again')
+        robot = self.robot_pose(fresh=True)
+        distance = self.check_reach(obj['center'], f'the {name}', robot)
+        tray = self.tray_top(robot)
+        # The tray has no collision (the object is held by a fixed joint, not by contact), so the
+        # object is fixed right after it arrives, before gravity moves it; 1 cm above the plate
+        # leaves room for the few millimetres it falls until then.
+        self.set_pose(name, self.origin_for(name, tray[:2], tray[2] + 0.01), obj['yaw'])
+        if not self.tray_joint(name, 'attach'):
+            raise SkillError(f'the tray did not take hold of the {name} (no confirmation from the simulator)')
         time.sleep(0.5)
-        if self.objects[name]['center'][2] - z_before < 0.03:
-            self.grip[(side, name, 'detach')].publish(Empty())
-            raise SkillError(f'the {name} did not come up with the {SIDE_NAME[side]} gripper (grasp failed)')
-        offset = self.to_robot(self.objects[name]['center']) - self.tool_in_robot(side)
-        self.holding[side] = {'object': name, 'offset': offset}
-        self.move_arm(side, q_carry, 'the carry pose')
-        phases.mark('grasp+lift+carry')
-        phases.log()
+        c = self.objects[name]['center']
+        off = np.linalg.norm(c[:2] - tray[:2])
+        if off > 0.05 or self.objects[name]['up'] < 0.9 or abs(c[2] - (tray[2] + OBJECTS[name]['size'][2] / 2)) > 0.05:
+            self.tray[(name, 'detach')].publish(Empty())
+            raise SkillError(f'the {name} did not stay on the tray ({off * 100:.0f} cm off its centre, '
+                             f'{c[2] - tray[2]:.2f} m above it)')
+        self.carrying = {'object': name, 'yaw': obj['yaw']}
         self.detected.pop(name, None)   # it has moved; the old observation is stale
-        return (f'picked the {name} with the {SIDE_NAME[side]} arm{pre_note} '
-                f'({math.dist(centre[:2], (0, 0)):.2f} m from the robot centre) and holds it in front, above the '
-                f'counter tops'), {'arm': side}
+        return (f'took the {name} from {distance:.2f} m in front of it (within its {REACH:.2f} m reach) and '
+                f'carries it on the tray in front of its torso'), {'distance_m': distance}
 
     def place(self, p):
+        """Sets the carried object down upright at (x, y) on a surface."""
         name = p['object']
-        side = next((s for s, h in self.holding.items() if h and h['object'] == name), None)
-        if side is None:
-            raise SkillError(f'the robot is not holding the {name}')
-        geom = OBJECTS[name]
+        if not self.carrying or self.carrying['object'] != name:
+            what = f'the {self.carrying["object"]}' if self.carrying else 'nothing'
+            raise SkillError(f'the robot is not carrying the {name} (the tray holds {what})')
         surface = p.get('surface', 'island')
         top = float(p['z_surface']) if 'z_surface' in p else self.scene['surfaces'][surface]
-        target = np.array([float(p['x']), float(p['y']), top + geom['size'][2] / 2 + 0.01])
-        phases = Phases(self.get_logger(), 'place')
-        tool = self.to_robot(target) - self.holding[side]['offset']
-        q_place = self.solve(side, tool, f'the place pose for the {name}')
-        q_above = self.solve(side, tool + np.array([0.0, 0.0, 0.08]), 'the pose above the place pose')
-        q_back = q_above
-        for back, up in RETREAT_OFFSETS:
-            try:
-                q_back = self.solve(side, tool + np.array([back, 0.0, up]), 'the retreat pose')
-                break
-            except SkillError:
+        goal = np.array([float(p['x']), float(p['y']), top])
+        distance = self.check_reach(goal, f'the goal ({goal[0]:.2f}, {goal[1]:.2f}) on the {surface}',
+                                    self.robot_pose(fresh=True))
+        # The goal spot must be free: no other object whose footprint would overlap.
+        radius = max(OBJECTS[name]['size'][:2]) / 2
+        for other, o in self.objects.items():
+            if other == name:
                 continue
-        phases.mark('ik')
-        self.move_arm(side, q_above, 'the pose above the place pose')
-        # Closed loop before lowering: the arm stops within 0.04 rad per joint, which can put the
-        # object a few cm off at full reach. Measure the held object 8 cm above the surface (no
-        # contact yet) and shift the arm; correcting after lowering dragged it over the table.
-        corrections = []
-        for _ in range(2):
-            time.sleep(0.3)
-            off = target + np.array([0.0, 0.0, 0.08]) - self.objects[name]['center']
-            if math.hypot(off[0], off[1]) < 0.01:
-                break
-            corrections.append(math.hypot(off[0], off[1]))
-            yaw = self.robot_pose()[2]
-            tool = tool + np.array([math.cos(yaw) * off[0] + math.sin(yaw) * off[1],
-                                    -math.sin(yaw) * off[0] + math.cos(yaw) * off[1], 0.0])
-            try:
-                q_above = self.solve(side, tool + np.array([0.0, 0.0, 0.08]), 'the corrected pose above the place pose')
-                q_place = self.solve(side, tool, 'the corrected place pose')
-            except SkillError:
-                break
-            self.move_arm(side, q_above, 'the corrected pose above the place pose')
-        self.move_arm(side, q_place, 'the place pose')
-        phases.mark('lower')
-        for _ in range(3):
-            self.grip[(side, name, 'detach')].publish(Empty())
-            time.sleep(0.2)
-        self.holding[side] = None
-        time.sleep(1.0)
-        released = self.objects[name]['center'].copy()
-        # Leave upwards and backwards, then through the high carry pose: going straight from
-        # here to the park pose swept the hand sideways through the objects already on the table.
-        carry = np.array(CARRY_TOOL) * np.array([1, 1 if side == 'l' else -1, 1])
-        q_carry = self.solve(side, carry, 'the carry pose')
-        self.move_arm(side, q_above, 'the pose above the object')
-        self.move_arm(side, q_back, 'the retreat pose')
-        self.move_arm(side, q_carry, 'the carry pose')
-        self.move_arm(side, {n: self.park[n] for n in self.ik[side].names}, 'the park pose')
-        self.command({f'{side}_gripper_l_finger_joint': GRIPPER_CLOSED})
-        phases.mark('release+retreat+park')
-        phases.log()
-        time.sleep(0.5)
+            gap = math.dist(o['center'][:2], goal[:2]) - radius - max(OBJECTS[other]['size'][:2]) / 2
+            if gap < 0.01 and abs(o['center'][2] - top) < 0.3:
+                raise SkillError(f'the goal spot on the {surface} is occupied: the {other} stands '
+                                 f'{math.dist(o["center"][:2], goal[:2]) * 100:.0f} cm from it, the {name} '
+                                 f'would touch it')
+        # Hand-off with the simulation paused: once the tray lets go, the object falls freely while the
+        # pose change (~0.5 s) is under way, and a tall cereal box then arrived falling and spinning
+        # and tipped over (tested). Paused, it is let go and moved without moving at all.
+        yaw = self.carrying['yaw']
+        self.pause(True)
+        try:
+            if not self.tray_joint(name, 'detach'):
+                raise SkillError(f'the tray did not let go of the {name} (no confirmation from the simulator)')
+            self.carrying = None
+            self.set_pose(name, self.origin_for(name, goal[:2], top), yaw)
+        finally:
+            self.pause(False)
+        self.wait_still(name)
         obj = self.objects[name]
-        error = math.dist(obj['center'][:2], target[:2])
-        release_error = math.dist(released[:2], target[:2])
-        moved = math.dist(obj['center'][:2], released[:2])
+        error = math.dist(obj['center'][:2], goal[:2])
         if obj['up'] < 0.9:
-            raise SkillError(f'the {name} fell over (released {release_error * 100:.1f} cm from the target, '
-                             f'then moved {moved * 100:.1f} cm{" while the arm withdrew" if moved > 0.02 else ""})')
-        if abs(obj['center'][2] - (top + geom['size'][2] / 2)) > 0.03:
-            raise SkillError(f'the {name} is not standing on the {surface} after release '
+            raise SkillError(f'the {name} fell over after it was set down on the {surface}')
+        if abs(obj['center'][2] - (top + OBJECTS[name]['size'][2] / 2)) > 0.03:
+            raise SkillError(f'the {name} is not standing on the {surface} after setting it down '
                              f'(height {obj["center"][2]:.2f} m)')
-        note = (f'; it was released {release_error * 100:.1f} cm from the target and then pushed '
-                f'{moved * 100:.1f} cm while the arm withdrew' if moved > 0.02 else '')
-        if corrections:
-            note += (f'; before letting go it corrected the arm {len(corrections)}x (the object was '
-                     f'{corrections[0] * 100:.1f} cm off: the arm joints stop within 0.04 rad of their targets)')
-        return (f'placed the {name} on the {surface} with the {SIDE_NAME[side]} arm, {error * 100:.1f} cm from the '
-                f'target, standing upright; arm parked again{note}'), {'error_m': error, 'release_error_m': release_error,
-                                                                       'moved_after_release_m': moved,
-                                                                       'corrections_m': corrections}
+        return (f'set the {name} down on the {surface} {distance:.2f} m in front of it, {error * 100:.1f} cm '
+                f'from the target, standing upright'), {'error_m': error, 'distance_m': distance}
 
     def object_pose(self, p):
         name = p['object']
