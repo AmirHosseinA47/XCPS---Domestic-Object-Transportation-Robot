@@ -29,13 +29,14 @@ def main():
     for joint in CONTROLLED_JOINTS:
         parts.append(entry(f'/pr2/{joint}/cmd_pos', f'/pr2/{joint}/cmd_pos', 'std_msgs/msg/Float64',
                            'gz.msgs.Double', 'ROS_TO_GZ'))
-    parts.append('\n# Carrying: attach / detach an object to the carry tray (DetachableJoint).\n')
-    for obj in CARRIED_OBJECTS:
-        for action in ('attach', 'detach'):
-            topic = f'/pr2/tray/{action}/{obj}'
-            parts.append(entry(topic, topic, 'std_msgs/msg/Empty', 'gz.msgs.Empty', 'ROS_TO_GZ'))
-        topic = f'/pr2/tray/state/{obj}'   # "attached" / "detached", sent when it changes
-        parts.append(entry(topic, topic, 'std_msgs/msg/String', 'gz.msgs.StringMsg', 'GZ_TO_ROS'))
+    parts.append('\n# Carrying: attach / detach an object to a hand (DetachableJoint), and its state.\n')
+    for side in ('l', 'r'):
+        for obj in CARRIED_OBJECTS:
+            for action in ('attach', 'detach'):
+                topic = f'/pr2/{side}_gripper/{action}/{obj}'
+                parts.append(entry(topic, topic, 'std_msgs/msg/Empty', 'gz.msgs.Empty', 'ROS_TO_GZ'))
+            topic = f'/pr2/{side}_gripper/state/{obj}'   # "attached" / "detached", sent when it changes
+            parts.append(entry(topic, topic, 'std_msgs/msg/String', 'gz.msgs.StringMsg', 'GZ_TO_ROS'))
     parts.append('\n# Ground-truth object poses (to check results; perception uses the head camera).\n')
     for obj in CARRIED_OBJECTS:
         parts.append(entry(f'/objects/{obj}/pose', f'/model/{obj}/pose', 'tf2_msgs/msg/TFMessage',

@@ -55,17 +55,13 @@ EFFORT_LIMIT_OVERRIDES = {'l_shoulder_lift_joint': 150.0, 'r_shoulder_lift_joint
 # under velocity commands in Gazebo Harmonic (tested); with force it rises at its URDF limit.
 FORCE_CONTROLLED_JOINTS = {'torso_lift_joint': {'p': 50000, 'i': 5000, 'max_force': 10000}}
 
-# Objects the robot can carry. The robot does not grasp: it loads an object onto a carry tray in
-# front of its torso and sets it down at the goal (kitchen_skills.py), which is enough for the
-# project (decided with the professor). On the tray the object is held by a fixed joint created on
-# request (gz DetachableJoint), so it cannot slide off while the robot drives.
+# Objects the robot can carry. The robot does not grasp (not needed for the project, decided with
+# the professor): a few seconds after it has seen an object within reach, the object moves into the
+# hand on its side, just below the parked gripper, and is held there by a fixed joint created on
+# request (gz DetachableJoint); at the goal it moves from the hand onto the surface (kitchen_skills.py).
+# The palm is merged into the wrist-roll link when the URDF becomes SDF (fixed joint), so the joint's
+# parent is the wrist-roll link.
 CARRIED_OBJECTS = ('milk', 'breakfast_cereal', 'bowl')
-
-# The carry tray: a plate fixed to the torso (it rises with it), in front of the torso column and
-# inside the base outline, so the navigation footprint does not change. Offsets are relative to
-# torso_lift_link; with the torso at 0.30 m the tray top is 0.955 m above the floor, just above
-# the counter and island tops (0.85 m), and well below and between the parked arms (1.2 m, y +/-0.55).
-TRAY = {'xyz': (0.25, 0.0, -0.145), 'size': (0.24, 0.30, 0.01), 'rim': 0.03}
 
 JOINT_ONLY_TAGS = ('limit', 'mimic', 'dynamics', 'safety_controller', 'calibration', 'axis')
 
@@ -111,31 +107,6 @@ def add_base_laser(robot):
         ET.SubElement(range_, key).text = value
 
 
-def add_carry_tray(robot):
-    """A plate with a low rim in front of the torso, on which the robot carries one object."""
-    link = ET.SubElement(robot, 'link', name='carry_tray_link')
-    inertial = ET.SubElement(link, 'inertial')
-    ET.SubElement(inertial, 'mass', value='0.5')
-    ET.SubElement(inertial, 'inertia', ixx='0.004', ixy='0', ixz='0', iyy='0.003', iyz='0', izz='0.006')
-    sx, sy, sz = TRAY['size']
-    rim = TRAY['rim']
-    parts = [('plate', (0.0, 0.0, 0.0), (sx, sy, sz)),
-             ('rim_front', (sx / 2 - 0.005, 0.0, rim / 2), (0.01, sy, rim)),
-             ('rim_left', (0.0, sy / 2 - 0.005, rim / 2), (sx, 0.01, rim)),
-             ('rim_right', (0.0, -sy / 2 + 0.005, rim / 2), (sx, 0.01, rim))]
-    # Visual only: the carried object is held by a fixed joint, not by contact. A tray collision
-    # fought that joint and pushed the robot (its base slides without friction) 43 cm (tested).
-    for name, xyz, size in parts:
-        visual = ET.SubElement(link, 'visual', name=f'carry_tray_{name}_visual')
-        ET.SubElement(visual, 'origin', xyz=' '.join(f'{v:.4f}' for v in xyz), rpy='0 0 0')
-        ET.SubElement(ET.SubElement(visual, 'geometry'), 'box', size=' '.join(f'{v:.4f}' for v in size))
-        ET.SubElement(ET.SubElement(visual, 'material', name='carry_tray_grey'), 'color', rgba='0.55 0.57 0.60 1')
-    joint = ET.SubElement(robot, 'joint', name='carry_tray_joint', type='fixed')
-    ET.SubElement(joint, 'parent', link='torso_lift_link')
-    ET.SubElement(joint, 'child', link='carry_tray_link')
-    ET.SubElement(joint, 'origin', xyz=' '.join(f'{v:.4f}' for v in TRAY['xyz']), rpy='0 0 0')
-
-
 def make_pr2():
     robot = ET.parse(PR2_LAB).getroot()
     fixed = []
@@ -176,17 +147,16 @@ def make_pr2():
             ET.SubElement(surface, 'mu1').text = '0'
             ET.SubElement(surface, 'mu2').text = '0'
     add_base_laser(robot)
-    add_carry_tray(robot)
-    for obj in CARRIED_OBJECTS:
-        # The tray is merged into torso_lift_link when the URDF becomes SDF (fixed joint), so that
-        # link is the joint's parent. Harmonic attaches as soon as the object exists
-        # (initial_attach is only read by newer versions); kitchen_skills.py detaches every object
-        # once at start-up.
-        plugin(gazebo, 'gz-sim-detachable-joint-system', 'gz::sim::systems::DetachableJoint',
-               parent_link='torso_lift_link', child_model=obj, child_link='link',
-               attach_topic=f'/pr2/tray/attach/{obj}', detach_topic=f'/pr2/tray/detach/{obj}',
-               output_topic=f'/pr2/tray/state/{obj}',
-               initial_attach='false', suppress_child_warning='true')
+    for side in ('l', 'r'):
+        for obj in CARRIED_OBJECTS:
+            # Harmonic attaches as soon as the object exists (initial_attach is only read by newer
+            # versions); kitchen_skills.py detaches every object once at start-up.
+            plugin(gazebo, 'gz-sim-detachable-joint-system', 'gz::sim::systems::DetachableJoint',
+                   parent_link=f'{side}_wrist_roll_link', child_model=obj, child_link='link',
+                   attach_topic=f'/pr2/{side}_gripper/attach/{obj}',
+                   detach_topic=f'/pr2/{side}_gripper/detach/{obj}',
+                   output_topic=f'/pr2/{side}_gripper/state/{obj}',
+                   initial_attach='false', suppress_child_warning='true')
     plugin(gazebo, 'gz-sim-joint-state-publisher-system', 'gz::sim::systems::JointStatePublisher')
     plugin(gazebo, 'gz-sim-odometry-publisher-system', 'gz::sim::systems::OdometryPublisher',
            odom_frame='odom', robot_base_frame='base_footprint', dimensions=3,

@@ -161,58 +161,112 @@
   direction: ROS_TO_GZ
 
 
-# Carrying: attach / detach an object to the carry tray (DetachableJoint).
+# Carrying: attach / detach an object to a hand (DetachableJoint), and its state.
 
-- ros_topic_name: "/pr2/tray/attach/milk"
-  gz_topic_name: "/pr2/tray/attach/milk"
+- ros_topic_name: "/pr2/l_gripper/attach/milk"
+  gz_topic_name: "/pr2/l_gripper/attach/milk"
   ros_type_name: "std_msgs/msg/Empty"
   gz_type_name: "gz.msgs.Empty"
   direction: ROS_TO_GZ
 
-- ros_topic_name: "/pr2/tray/detach/milk"
-  gz_topic_name: "/pr2/tray/detach/milk"
+- ros_topic_name: "/pr2/l_gripper/detach/milk"
+  gz_topic_name: "/pr2/l_gripper/detach/milk"
   ros_type_name: "std_msgs/msg/Empty"
   gz_type_name: "gz.msgs.Empty"
   direction: ROS_TO_GZ
 
-- ros_topic_name: "/pr2/tray/state/milk"
-  gz_topic_name: "/pr2/tray/state/milk"
+- ros_topic_name: "/pr2/l_gripper/state/milk"
+  gz_topic_name: "/pr2/l_gripper/state/milk"
   ros_type_name: "std_msgs/msg/String"
   gz_type_name: "gz.msgs.StringMsg"
   direction: GZ_TO_ROS
 
-- ros_topic_name: "/pr2/tray/attach/breakfast_cereal"
-  gz_topic_name: "/pr2/tray/attach/breakfast_cereal"
+- ros_topic_name: "/pr2/l_gripper/attach/breakfast_cereal"
+  gz_topic_name: "/pr2/l_gripper/attach/breakfast_cereal"
   ros_type_name: "std_msgs/msg/Empty"
   gz_type_name: "gz.msgs.Empty"
   direction: ROS_TO_GZ
 
-- ros_topic_name: "/pr2/tray/detach/breakfast_cereal"
-  gz_topic_name: "/pr2/tray/detach/breakfast_cereal"
+- ros_topic_name: "/pr2/l_gripper/detach/breakfast_cereal"
+  gz_topic_name: "/pr2/l_gripper/detach/breakfast_cereal"
   ros_type_name: "std_msgs/msg/Empty"
   gz_type_name: "gz.msgs.Empty"
   direction: ROS_TO_GZ
 
-- ros_topic_name: "/pr2/tray/state/breakfast_cereal"
-  gz_topic_name: "/pr2/tray/state/breakfast_cereal"
+- ros_topic_name: "/pr2/l_gripper/state/breakfast_cereal"
+  gz_topic_name: "/pr2/l_gripper/state/breakfast_cereal"
   ros_type_name: "std_msgs/msg/String"
   gz_type_name: "gz.msgs.StringMsg"
   direction: GZ_TO_ROS
 
-- ros_topic_name: "/pr2/tray/attach/bowl"
-  gz_topic_name: "/pr2/tray/attach/bowl"
+- ros_topic_name: "/pr2/l_gripper/attach/bowl"
+  gz_topic_name: "/pr2/l_gripper/attach/bowl"
   ros_type_name: "std_msgs/msg/Empty"
   gz_type_name: "gz.msgs.Empty"
   direction: ROS_TO_GZ
 
-- ros_topic_name: "/pr2/tray/detach/bowl"
-  gz_topic_name: "/pr2/tray/detach/bowl"
+- ros_topic_name: "/pr2/l_gripper/detach/bowl"
+  gz_topic_name: "/pr2/l_gripper/detach/bowl"
   ros_type_name: "std_msgs/msg/Empty"
   gz_type_name: "gz.msgs.Empty"
   direction: ROS_TO_GZ
 
-- ros_topic_name: "/pr2/tray/state/bowl"
-  gz_topic_name: "/pr2/tray/state/bowl"
+- ros_topic_name: "/pr2/l_gripper/state/bowl"
+  gz_topic_name: "/pr2/l_gripper/state/bowl"
+  ros_type_name: "std_msgs/msg/String"
+  gz_type_name: "gz.msgs.StringMsg"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/pr2/r_gripper/attach/milk"
+  gz_topic_name: "/pr2/r_gripper/attach/milk"
+  ros_type_name: "std_msgs/msg/Empty"
+  gz_type_name: "gz.msgs.Empty"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/pr2/r_gripper/detach/milk"
+  gz_topic_name: "/pr2/r_gripper/detach/milk"
+  ros_type_name: "std_msgs/msg/Empty"
+  gz_type_name: "gz.msgs.Empty"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/pr2/r_gripper/state/milk"
+  gz_topic_name: "/pr2/r_gripper/state/milk"
+  ros_type_name: "std_msgs/msg/String"
+  gz_type_name: "gz.msgs.StringMsg"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/pr2/r_gripper/attach/breakfast_cereal"
+  gz_topic_name: "/pr2/r_gripper/attach/breakfast_cereal"
+  ros_type_name: "std_msgs/msg/Empty"
+  gz_type_name: "gz.msgs.Empty"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/pr2/r_gripper/detach/breakfast_cereal"
+  gz_topic_name: "/pr2/r_gripper/detach/breakfast_cereal"
+  ros_type_name: "std_msgs/msg/Empty"
+  gz_type_name: "gz.msgs.Empty"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/pr2/r_gripper/state/breakfast_cereal"
+  gz_topic_name: "/pr2/r_gripper/state/breakfast_cereal"
+  ros_type_name: "std_msgs/msg/String"
+  gz_type_name: "gz.msgs.StringMsg"
+  direction: GZ_TO_ROS
+
+- ros_topic_name: "/pr2/r_gripper/attach/bowl"
+  gz_topic_name: "/pr2/r_gripper/attach/bowl"
+  ros_type_name: "std_msgs/msg/Empty"
+  gz_type_name: "gz.msgs.Empty"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/pr2/r_gripper/detach/bowl"
+  gz_topic_name: "/pr2/r_gripper/detach/bowl"
+  ros_type_name: "std_msgs/msg/Empty"
+  gz_type_name: "gz.msgs.Empty"
+  direction: ROS_TO_GZ
+
+- ros_topic_name: "/pr2/r_gripper/state/bowl"
+  gz_topic_name: "/pr2/r_gripper/state/bowl"
   ros_type_name: "std_msgs/msg/String"
   gz_type_name: "gz.msgs.StringMsg"
   direction: GZ_TO_ROS

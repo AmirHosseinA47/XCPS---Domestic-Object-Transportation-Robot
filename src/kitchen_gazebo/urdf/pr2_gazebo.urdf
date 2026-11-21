@@ -1960,32 +1960,62 @@
       <topic>/pr2/cmd_vel</topic>
     </plugin>
     <plugin filename="gz-sim-detachable-joint-system" name="gz::sim::systems::DetachableJoint">
-      <parent_link>torso_lift_link</parent_link>
+      <parent_link>l_wrist_roll_link</parent_link>
       <child_model>milk</child_model>
       <child_link>link</child_link>
-      <attach_topic>/pr2/tray/attach/milk</attach_topic>
-      <detach_topic>/pr2/tray/detach/milk</detach_topic>
-      <output_topic>/pr2/tray/state/milk</output_topic>
+      <attach_topic>/pr2/l_gripper/attach/milk</attach_topic>
+      <detach_topic>/pr2/l_gripper/detach/milk</detach_topic>
+      <output_topic>/pr2/l_gripper/state/milk</output_topic>
       <initial_attach>false</initial_attach>
       <suppress_child_warning>true</suppress_child_warning>
     </plugin>
     <plugin filename="gz-sim-detachable-joint-system" name="gz::sim::systems::DetachableJoint">
-      <parent_link>torso_lift_link</parent_link>
+      <parent_link>l_wrist_roll_link</parent_link>
       <child_model>breakfast_cereal</child_model>
       <child_link>link</child_link>
-      <attach_topic>/pr2/tray/attach/breakfast_cereal</attach_topic>
-      <detach_topic>/pr2/tray/detach/breakfast_cereal</detach_topic>
-      <output_topic>/pr2/tray/state/breakfast_cereal</output_topic>
+      <attach_topic>/pr2/l_gripper/attach/breakfast_cereal</attach_topic>
+      <detach_topic>/pr2/l_gripper/detach/breakfast_cereal</detach_topic>
+      <output_topic>/pr2/l_gripper/state/breakfast_cereal</output_topic>
       <initial_attach>false</initial_attach>
       <suppress_child_warning>true</suppress_child_warning>
     </plugin>
     <plugin filename="gz-sim-detachable-joint-system" name="gz::sim::systems::DetachableJoint">
-      <parent_link>torso_lift_link</parent_link>
+      <parent_link>l_wrist_roll_link</parent_link>
       <child_model>bowl</child_model>
       <child_link>link</child_link>
-      <attach_topic>/pr2/tray/attach/bowl</attach_topic>
-      <detach_topic>/pr2/tray/detach/bowl</detach_topic>
-      <output_topic>/pr2/tray/state/bowl</output_topic>
+      <attach_topic>/pr2/l_gripper/attach/bowl</attach_topic>
+      <detach_topic>/pr2/l_gripper/detach/bowl</detach_topic>
+      <output_topic>/pr2/l_gripper/state/bowl</output_topic>
+      <initial_attach>false</initial_attach>
+      <suppress_child_warning>true</suppress_child_warning>
+    </plugin>
+    <plugin filename="gz-sim-detachable-joint-system" name="gz::sim::systems::DetachableJoint">
+      <parent_link>r_wrist_roll_link</parent_link>
+      <child_model>milk</child_model>
+      <child_link>link</child_link>
+      <attach_topic>/pr2/r_gripper/attach/milk</attach_topic>
+      <detach_topic>/pr2/r_gripper/detach/milk</detach_topic>
+      <output_topic>/pr2/r_gripper/state/milk</output_topic>
+      <initial_attach>false</initial_attach>
+      <suppress_child_warning>true</suppress_child_warning>
+    </plugin>
+    <plugin filename="gz-sim-detachable-joint-system" name="gz::sim::systems::DetachableJoint">
+      <parent_link>r_wrist_roll_link</parent_link>
+      <child_model>breakfast_cereal</child_model>
+      <child_link>link</child_link>
+      <attach_topic>/pr2/r_gripper/attach/breakfast_cereal</attach_topic>
+      <detach_topic>/pr2/r_gripper/detach/breakfast_cereal</detach_topic>
+      <output_topic>/pr2/r_gripper/state/breakfast_cereal</output_topic>
+      <initial_attach>false</initial_attach>
+      <suppress_child_warning>true</suppress_child_warning>
+    </plugin>
+    <plugin filename="gz-sim-detachable-joint-system" name="gz::sim::systems::DetachableJoint">
+      <parent_link>r_wrist_roll_link</parent_link>
+      <child_model>bowl</child_model>
+      <child_link>link</child_link>
+      <attach_topic>/pr2/r_gripper/attach/bowl</attach_topic>
+      <detach_topic>/pr2/r_gripper/detach/bowl</detach_topic>
+      <output_topic>/pr2/r_gripper/state/bowl</output_topic>
       <initial_attach>false</initial_attach>
       <suppress_child_warning>true</suppress_child_warning>
     </plugin>
@@ -2077,51 +2107,4 @@
       </lidar>
     </sensor>
   </gazebo>
-  <link name="carry_tray_link">
-    <inertial>
-      <mass value="0.5" />
-      <inertia ixx="0.004" ixy="0" ixz="0" iyy="0.003" iyz="0" izz="0.006" />
-    </inertial>
-    <visual name="carry_tray_plate_visual">
-      <origin xyz="0.0000 0.0000 0.0000" rpy="0 0 0" />
-      <geometry>
-        <box size="0.2400 0.3000 0.0100" />
-      </geometry>
-      <material name="carry_tray_grey">
-        <color rgba="0.55 0.57 0.60 1" />
-      </material>
-    </visual>
-    <visual name="carry_tray_rim_front_visual">
-      <origin xyz="0.1150 0.0000 0.0150" rpy="0 0 0" />
-      <geometry>
-        <box size="0.0100 0.3000 0.0300" />
-      </geometry>
-      <material name="carry_tray_grey">
-        <color rgba="0.55 0.57 0.60 1" />
-      </material>
-    </visual>
-    <visual name="carry_tray_rim_left_visual">
-      <origin xyz="0.0000 0.1450 0.0150" rpy="0 0 0" />
-      <geometry>
-        <box size="0.2400 0.0100 0.0300" />
-      </geometry>
-      <material name="carry_tray_grey">
-        <color rgba="0.55 0.57 0.60 1" />
-      </material>
-    </visual>
-    <visual name="carry_tray_rim_right_visual">
-      <origin xyz="0.0000 -0.1450 0.0150" rpy="0 0 0" />
-      <geometry>
-        <box size="0.2400 0.0100 0.0300" />
-      </geometry>
-      <material name="carry_tray_grey">
-        <color rgba="0.55 0.57 0.60 1" />
-      </material>
-    </visual>
-  </link>
-  <joint name="carry_tray_joint" type="fixed">
-    <parent link="torso_lift_link" />
-    <child link="carry_tray_link" />
-    <origin xyz="0.2500 0.0000 -0.1450" rpy="0 0 0" />
-  </joint>
 </robot>

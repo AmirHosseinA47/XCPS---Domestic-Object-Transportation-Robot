@@ -35,29 +35,32 @@ run with real physics and real navigation, and every robot action reports what h
 - **Navigation:** Nav2 drives the robot between the sink counter and the kitchen island on a map
   generated from the kitchen model.
 - **Perception:** a simulated head camera detects an object when it is inside the camera's field of view.
-- **Carrying:** the robot does not grasp with its arms. When it has seen an object within reach, it
-  loads it onto a carry tray in front of its torso, drives to the goal and sets it down upright —
-  after checking that the goal is within reach and free. Taking and setting down are pose changes in
-  the simulator, not physics; on the tray a fixed joint holds the object while the robot drives. The
-  result is checked against the object's goal (5 cm tolerance). Grasping with the arms is not needed
-  for the project (decided with the professor), so the arms stay parked.
+- **Carrying:** the robot does not grasp, and its arms stay parked. About 4 seconds after it has seen
+  an object within reach, the object moves from the counter into the hand on its side (just below
+  the gripper). At the goal, about 4 seconds after arriving, the object moves from the hand onto the
+  surface, upright — after the robot has checked that the goal is within reach and free. Taking and
+  setting down are pose changes in the simulator, not physics; in the hand a fixed joint holds the
+  object while the robot drives. The result is checked against the object's goal (5 cm tolerance).
+  Grasping with the arms is not needed for the project (decided with the professor).
 - **Task logic:** a behaviour tree (BehaviorTree.CPP) for *set the table* and *clean the table*.
   Each action calls one robot skill.
 - **Explanations (first version):** every skill answers with what happened and why, for example
   *"breakfast_cereal is 12 deg right of the camera's field of view (the head points elsewhere)"*. After each run the
   runner writes a summary: *What did the robot do? Did anything go wrong, and why? Result.*
 
-Results of a full run from a fresh start (simulated time, two runs in a row):
+Results of a full run from a fresh start (simulated time):
 
 | Scenario | Result | Time | Distance of milk / cereal / bowl from their goals |
 |----------|--------|------|---------------------------------------------------|
-| set the table (counter → island) | success | 106 s (both runs) | 0.0 / 0.1 / 0.2 cm |
-| clean the table (island → counter) | success | 83–88 s | 0.0 / 0.1 / 0.2 cm |
+| set the table (counter → island) | success | 131 s | 0.0 / 0.1 / 0.2 cm |
+| clean the table (island → counter) | success | 107 s | 0.0 / 0.1 / 0.2 cm |
+
+(About 24 s of each run are the 4 s waits before each object moves.)
 
 Typical explanations when something is not possible (each is the skill's own answer):
 
 - *"the milk has not been seen yet; the robot must detect it before taking it"*
-- *"the tray already carries the milk; it holds one object at a time"*
+- *"the left hand already holds the milk; the robot carries one object at a time"*
 - *"the goal spot on the counter is occupied: the bowl stands 0 cm from it, the milk would touch it"*
 - *"the goal (-1.40, 1.20) on the island is 1.27 m from the robot centre, beyond its 0.85 m reach (0.42 m too
   far; the robot must stand closer)"*
@@ -170,6 +173,6 @@ rebuild, e.g. `python3 src/kitchen_gazebo/scripts/make_gazebo_urdfs.py && colcon
 - **Differences to the original lab:** the robot starts at (0.2, 0.6) instead of (1, 2), where its
   base would be inside the oven; the objects stand next to the sink instead of above its basin; the
   goals on the island are spread so the objects do not touch; the robot stands at the island's edge
-  instead of inside it. Instead of grasping, the robot carries each object on a tray (see Carrying).
+  instead of inside it. Instead of grasping, objects move into the robot's hand (see Carrying).
 - **Licenses:** the kitchen meshes come from `code-iai/iai_maps`, which declares no license; keep this
   in mind before making the repository public.
